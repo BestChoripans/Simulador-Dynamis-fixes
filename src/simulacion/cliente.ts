@@ -1,6 +1,6 @@
 import { crearControl, fijarVelocidad, pausar, pedir, IDX, type Pedido } from './control';
 import type { FinEjecucion, Instantanea } from './ejecucion';
-import { crearEntrada, escribirCanal, fijarConectado, vaciarCanal, type Entrada } from './entrada';
+import { crearEntrada, escribirCanal, fijarConectado, presionarBoton, vaciarCanal, type Entrada } from './entrada';
 import type { MensajeAlSimulador, MensajeDelSimulador } from './trabajador';
 import type { Pista } from '../pista/tipos';
 import type { ConfigRobot } from '../robot/config';
@@ -59,7 +59,7 @@ export class ClienteSimulacion {
     const mensaje: MensajeAlSimulador = {
       tipo: 'iniciar', modulo: o.modulo, pista: o.pista, robot: o.robot, desde: o.desde, semilla: o.semilla,
       ajustes: o.ajustes, control: control.buffer as SharedArrayBuffer,
-      entrada: { serial: entrada.serial.memoria, bluetooth: entrada.bluetooth.memoria },
+      entrada: { serial: entrada.serial.memoria, bluetooth: entrada.bluetooth.memoria, botones: entrada.botones.buffer as SharedArrayBuffer },
     };
     trabajador.postMessage(mensaje);
     this.trabajador = trabajador;
@@ -100,6 +100,11 @@ export class ClienteSimulacion {
   /** El teléfono simulado le escribe al robot por Bluetooth. */
   enviarBluetooth(bytes: Uint8Array): number {
     return this.entrada ? escribirCanal(this.entrada.bluetooth, bytes) : 0;
+  }
+
+  /** Aprieta o suelta el botón conectado a ese pin. */
+  presionarBoton(pin: number, si: boolean): void {
+    if (this.entrada) presionarBoton(this.entrada.botones, pin, si);
   }
 
   /** Conecta o desconecta el teléfono simulado. */

@@ -6,7 +6,7 @@ import { COSTOS_US, BUFER_SERIAL_BYTES, usPorCaracter } from './costos';
 import { crearAzar, type Azar } from './azar';
 import { ROBOT_POR_DEFECTO, type ConfigRobot, type SensorColor } from '../robot/config';
 import { BusI2C } from './i2c';
-import { conectado, disponibles, espiarCanal, fijarConectado, leerCanal, vaciarCanal, type Entrada } from './entrada';
+import { botonPresionado, conectado, disponibles, espiarCanal, fijarConectado, leerCanal, vaciarCanal, type Entrada } from './entrada';
 import { mundoPlano } from '../mundo/plano';
 import type { Mundo } from '../mundo/tipos';
 import { MODELOS_POR_DEFECTO, poseVL53, puntosQTR, puntoTCS, type Ambiente, type LecturaMPU, type LecturaTCS, type ModelosSensores } from './sensores';
@@ -344,7 +344,10 @@ export class Simulador {
       rendir: () => this.avanzar(COSTOS_US.yield),
       pinMode: (pin, modo) => { this.avanzar(COSTOS_US.pinMode); p.pinMode(pin, modo); },
       digitalWrite: (pin, valor) => { this.avanzar(COSTOS_US.digitalWrite); p.digitalWrite(pin, valor); },
-      digitalRead: pin => { this.avanzar(COSTOS_US.digitalRead); return p.digitalRead(pin); },
+      digitalRead: pin => {
+        this.avanzar(COSTOS_US.digitalRead);
+        return p.digitalRead(pin, this.entrada !== null && botonPresionado(this.entrada.botones, pin));
+      },
       analogRead: pin => {
         this.avanzar(COSTOS_US.analogRead);
         const lector = this.lectorAnalogico;

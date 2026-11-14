@@ -2,6 +2,7 @@ import { crearPanelPrograma } from './programa';
 import { Bitacora, formatoTiempo } from './bitacora';
 import { crearComunicacion } from './comunicacion';
 import { crearSelectorTema } from './tema-oscuro';
+import { crearBotonRobot } from './boton-robot';
 import { registrarPrueba } from './pruebas';
 import { crearLienzo } from './lienzo';
 import { crearTarjetas } from './tarjetas';
@@ -123,6 +124,7 @@ export async function iniciarAplicacion(raiz: Document): Promise<void> {
   });
   const consola = { refrescar: () => comunicacion.refrescarSerial(), irAlFinal: () => comunicacion.irAlFinal() };
   crearSelectorTema(raiz);
+  const botonRobot = crearBotonRobot(raiz, (pin, si) => simulacion.presionarBoton(pin, si));
   const mensajeSistema = (texto: string) => {
     bitacora.agregarSistema(tActual, texto);
     consola.refrescar();
@@ -311,6 +313,7 @@ export async function iniciarAplicacion(raiz: Document): Promise<void> {
   function mostrar(e: EstadoApp, progreso?: number) {
     acciones.mostrar(e, progreso);
     comunicacion.habilitar(e === 'corriendo' || e === 'pausa');
+    botonRobot.habilitar(e === 'corriendo' || e === 'pausa');
   }
 
   /** Pasa a Programar la pista del editor y el robot de "Mi robot", si cambiaron. */

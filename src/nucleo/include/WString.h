@@ -54,6 +54,36 @@ public:
 
   long toInt() const;
   float toFloat() const;
+  double toDouble() const;
+
+  // Edición en el lugar, como en el core del ESP32.
+  void trim();
+  void toLowerCase();
+  void toUpperCase();
+  void replace(char buscado, char nuevo);
+  void replace(const String& buscada, const String& nueva);
+  void remove(unsigned int desde);
+  void remove(unsigned int desde, unsigned int cuantos);
+  void setCharAt(unsigned int i, char c) { if (i < largo) datos[i] = c; }
+  bool reserve(unsigned int tamano) { return reservar(tamano); }
+  bool isEmpty() const { return largo == 0; }
+
+  int lastIndexOf(char c) const;
+  int lastIndexOf(const String& buscada) const;
+  bool startsWith(const String& prefijo) const;
+  bool startsWith(const String& prefijo, unsigned int desde) const;
+  bool endsWith(const String& sufijo) const;
+  bool equalsIgnoreCase(const String& otra) const;
+  int compareTo(const String& otra) const;
+  bool operator<(const String& otra) const { return compareTo(otra) < 0; }
+  bool operator>(const String& otra) const { return compareTo(otra) > 0; }
+  bool operator<=(const String& otra) const { return compareTo(otra) <= 0; }
+  bool operator>=(const String& otra) const { return compareTo(otra) >= 0; }
+  void toCharArray(char* destino, unsigned int tamano, unsigned int desde = 0) const;
+  void getBytes(unsigned char* destino, unsigned int tamano, unsigned int desde = 0) const {
+    toCharArray(reinterpret_cast<char*>(destino), tamano, desde);
+  }
+  explicit operator bool() const { return datos != nullptr; }
 
   bool equals(const String& otra) const;
   bool equals(const char* texto) const;

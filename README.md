@@ -24,6 +24,8 @@ subirlo al robot físico.
   `BluetoothSerial`: cuando el programa hace `SerialBT.begin("Nombre")`, se conecta con «Conectar
   teléfono», muestra lo que el robot envía y le escribe mensajes o letras con el control rápido
   (F, B, L, R y S), como una app de control por Bluetooth.
+- **Botón del robot:** junto a "Volver al inicio", hace de botón físico en un pin (12 por defecto):
+  mientras está apretado, `digitalRead(pin)` lee 1 (o 0 si el pin usa `INPUT_PULLUP`).
 - **Modo oscuro:** el botón de la banda cambia entre claro y oscuro; si no se elige, sigue al sistema.
 - **Ejemplos:** proyectos para cada sensor (motores, línea, seguidores, cortes, marcas de color,
   rampa, obstáculo y giroscopio) y tres pistas.
@@ -57,6 +59,7 @@ El núcleo Arduino del ESP32 y las librerías de los sensores están reimplement
 - `BluetoothSerial` del core (Bluetooth clásico, SPP): `begin`, `available`, `read`, `print`,
   `hasClient`, `register_callback` (conexión y desconexión), `onData` y `disconnect`. No puede
   conectarse como maestro a otro aparato;
+- `Preferences` (la memoria del ESP32): los valores duran mientras corre la prueba;
 - `QTRSensors` de Pololu (v4);
 - `Adafruit_VL53L0X`;
 - `MPU6050_light` (de rfetick);

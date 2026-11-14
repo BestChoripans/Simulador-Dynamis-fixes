@@ -1,6 +1,7 @@
 // String de Arduino: buffer dinámico con malloc/realloc, números formateados como el core del ESP32.
 #include "Arduino.h"
 #include <stdio.h>
+#include <ctype.h>
 
 namespace {
 
@@ -171,3 +172,91 @@ String operator+(const String& a, long b) { String s(a); s.concat(b); return s; 
 String operator+(const String& a, unsigned long b) { String s(a); s.concat(b); return s; }
 String operator+(const String& a, float b) { String s(a); s.concat(b); return s; }
 String operator+(const String& a, double b) { String s(a); s.concat(b); return s; }
+
+double String::toDouble() const { return datos ? atof(datos) : 0; }
+
+void String::trim() {
+  if (!datos || largo == 0) return;
+  unsigned int inicio = 0, fin = largo;
+  while (inicio < fin && isspace(static_cast<unsigned char>(datos[inicio]))) inicio++;
+  while (fin > inicio && isspace(static_cast<unsigned char>(datos[fin - 1]))) fin--;
+  largo = fin - inicio;
+  if (inicio > 0) memmove(datos, datos + inicio, largo);
+  datos[largo] = 0;
+}
+
+void String::toLowerCase() {
+  for (unsigned int i = 0; i < largo; i++) datos[i] = static_cast<char>(tolower(static_cast<unsigned char>(datos[i])));
+}
+
+void String::toUpperCase() {
+  for (unsigned int i = 0; i < largo; i++) datos[i] = static_cast<char>(toupper(static_cast<unsigned char>(datos[i])));
+}
+
+void String::replace(char buscado, char nuevo) {
+  for (unsigned int i = 0; i < largo; i++) if (datos[i] == buscado) datos[i] = nuevo;
+}
+
+void String::replace(const String& buscada, const String& nueva) {
+  if (largo == 0 || buscada.largo == 0) return;
+  String resultado;
+  unsigned int i = 0;
+  for (int en; (en = indexOf(buscada, i)) >= 0; i = static_cast<unsigned int>(en) + buscada.largo) {
+    resultado += substring(i, static_cast<unsigned int>(en));
+    resultado += nueva;
+  }
+  resultado += substring(i);
+  *this = resultado;
+}
+
+void String::remove(unsigned int desde) { remove(desde, largo); }
+
+void String::remove(unsigned int desde, unsigned int cuantos) {
+  if (desde >= largo) return;
+  if (cuantos > largo - desde) cuantos = largo - desde;
+  memmove(datos + desde, datos + desde + cuantos, largo - desde - cuantos);
+  largo -= cuantos;
+  datos[largo] = 0;
+}
+
+int String::lastIndexOf(char c) const {
+  for (int i = static_cast<int>(largo) - 1; i >= 0; i--) if (datos[i] == c) return i;
+  return -1;
+}
+
+int String::lastIndexOf(const String& buscada) const {
+  if (buscada.largo == 0 || buscada.largo > largo) return -1;
+  for (int i = static_cast<int>(largo - buscada.largo); i >= 0; i--)
+    if (strncmp(datos + i, buscada.c_str(), buscada.largo) == 0) return i;
+  return -1;
+}
+
+bool String::startsWith(const String& prefijo) const { return startsWith(prefijo, 0); }
+
+bool String::startsWith(const String& prefijo, unsigned int desde) const {
+  if (desde > largo || prefijo.largo > largo - desde) return false;
+  return strncmp(c_str() + desde, prefijo.c_str(), prefijo.largo) == 0;
+}
+
+bool String::endsWith(const String& sufijo) const {
+  if (sufijo.largo > largo) return false;
+  return strcmp(c_str() + largo - sufijo.largo, sufijo.c_str()) == 0;
+}
+
+bool String::equalsIgnoreCase(const String& otra) const {
+  if (largo != otra.largo) return false;
+  for (unsigned int i = 0; i < largo; i++)
+    if (tolower(static_cast<unsigned char>(datos[i])) != tolower(static_cast<unsigned char>(otra.datos[i]))) return false;
+  return true;
+}
+
+int String::compareTo(const String& otra) const { return strcmp(c_str(), otra.c_str()); }
+
+void String::toCharArray(char* destino, unsigned int tamano, unsigned int desde) const {
+  if (!destino || tamano == 0) return;
+  if (desde >= largo) { destino[0] = 0; return; }
+  unsigned int n = largo - desde;
+  if (n > tamano - 1) n = tamano - 1;
+  memcpy(destino, datos + desde, n);
+  destino[n] = 0;
+}

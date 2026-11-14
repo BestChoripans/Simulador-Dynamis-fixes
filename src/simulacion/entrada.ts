@@ -59,9 +59,24 @@ export function fijarConectado(c: Canal, si: boolean): void {
   Atomics.store(c.cabecera, IDX.conectado, si ? 1 : 0);
 }
 
-/** Los dos canales de una prueba. */
-export interface Entrada { serial: Canal; bluetooth: Canal }
+/** Los pines del ESP32 que puede tener un botón (GPIO 0 a 39). */
+export const PINES_BOTON = 40;
+
+/** Los dos canales de una prueba y los botones: 1 en el pin cuyo botón está apretado. */
+export interface Entrada { serial: Canal; bluetooth: Canal; botones: Int32Array }
+
+export function crearBotones(): Int32Array {
+  return new Int32Array(new SharedArrayBuffer(PINES_BOTON * Int32Array.BYTES_PER_ELEMENT));
+}
 
 export function crearEntrada(): Entrada {
-  return { serial: crearCanal(), bluetooth: crearCanal() };
+  return { serial: crearCanal(), bluetooth: crearCanal(), botones: crearBotones() };
+}
+
+export function presionarBoton(botones: Int32Array, pin: number, si: boolean): void {
+  if (pin >= 0 && pin < PINES_BOTON) Atomics.store(botones, pin, si ? 1 : 0);
+}
+
+export function botonPresionado(botones: Int32Array, pin: number): boolean {
+  return pin >= 0 && pin < PINES_BOTON && Atomics.load(botones, pin) === 1;
 }

@@ -69,9 +69,14 @@ export class Pines {
     this.niveles.set(pin, valor ? 1 : 0);
   }
 
-  digitalRead(pin: number): 0 | 1 {
+  /**
+   * presionado: un botón conectado a ese pin está apretado. Lleva el pin al nivel contrario al de
+   * reposo: a GND con INPUT_PULLUP (lee 0) y a 3V3 en otro caso (lee 1).
+   */
+  digitalRead(pin: number, presionado = false): 0 | 1 {
     if (this.esSalida(pin)) return this.niveles.get(pin) ?? 0;
-    return ((this.modos.get(pin) ?? 0) & MODO_INPUT_PULLUP_BIT) !== 0 ? 1 : 0;
+    const pullup = ((this.modos.get(pin) ?? 0) & MODO_INPUT_PULLUP_BIT) !== 0;
+    return pullup !== presionado ? 1 : 0;
   }
 
   analogWriteResolution(pin: number, bits: number): void {

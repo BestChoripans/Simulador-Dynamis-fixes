@@ -559,3 +559,12 @@ button:disabled { opacity: .55; cursor: not-allowed; }
 @media (max-width: 640px) {
   .control-codigo { display: none; }
 }
+
+/* Botón del robot: un botón físico en un pin, que se mantiene apretado. */
+.boton-robot { display: inline-flex; align-items: center; gap: 6px; }
+#btn-boton { touch-action: none; user-select: none; }
+#btn-boton .centro { fill: none; transition: fill .08s; }
+#btn-boton[aria-pressed="true"] { background: var(--azul); color: var(--blanco); transform: translateY(2px); }
+#btn-boton[aria-pressed="true"] .centro { fill: currentColor; }
+.pin-boton { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; color: var(--tinta-suave); font-weight: 600; }
+.pin-boton input { width: 3.6em; border: 2px solid var(--hielo); background: var(--blanco); color: var(--tinta); border-radius: 10px; padding: 5px 6px; font: inherit; font-variant-numeric: tabular-nums; }
