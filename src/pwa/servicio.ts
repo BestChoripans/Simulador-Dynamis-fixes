@@ -45,5 +45,8 @@ sw.addEventListener('fetch', e => {
   const tipo = estrategia({ url: new URL(pedido.url), origen: sw.location.origin, metodo: pedido.method, modo: pedido.mode });
   if (tipo === 'red') return;
   const d = { abrirCache: () => caches.open(CACHE), red: (r: Request) => fetch(r), enSegundoPlano: (p: Promise<unknown>) => e.waitUntil(p) };
-  e.respondWith(tipo === 'red-primero' ? redPrimero(pedido, absoluta(INICIO), d) : cachePrimero(pedido, d));
+  // GitHub Pages deja guardar la página 10 minutos (max-age=600): sin "no-cache", después de publicar
+  // se seguiría viendo la versión anterior. Así el navegador siempre pregunta si hay una nueva.
+  const sinCacheHttp = { ...d, red: (r: Request) => fetch(r.url, { cache: 'no-cache', credentials: 'same-origin' }) };
+  e.respondWith(tipo === 'red-primero' ? redPrimero(pedido, absoluta(INICIO), sinCacheHttp) : cachePrimero(pedido, d));
 });
