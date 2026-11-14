@@ -3,11 +3,12 @@ import pines from './seguidor/pines.h?raw';
 import practica from './pistas/practica.json';
 import cruces from './pistas/cruces.json';
 import rampa from './pistas/rampa.json';
+import carlosbot from './pistas/carlosbot.json';
 import { normalizarPista } from '../pista/serializacion';
 import type { Pista } from '../pista/tipos';
 import type { Proyecto } from '../proyecto/proyecto';
 
-export type IdPista = 'practica' | 'cruces' | 'rampa';
+export type IdPista = 'practica' | 'cruces' | 'rampa' | 'carlosbot';
 export interface EjemploPista { id: IdPista; nombre: string; descripcion: string; pista: Pista }
 export interface EjemploProyecto { id: string; nombre: string; descripcion: string; pista: IdPista; proyecto: Proyecto }
 
@@ -22,6 +23,7 @@ export const PISTAS_DE_EJEMPLO: EjemploPista[] = [
   { id: 'practica', descripcion: 'La pista para empezar: rectas, curvas suaves y la meta.', pista: leerPista(practica) },
   { id: 'cruces', descripcion: 'Cruces con marcas de color y una línea cortada.', pista: leerPista(cruces) },
   { id: 'rampa', descripcion: 'Una rampa para subir y bajar, baches y el obstáculo.', pista: leerPista(rampa) },
+  { id: 'carlosbot', descripcion: 'La mesa del taller: cuadrado de colores, escalones, curvas en S, rampa, F1, F2, un ocho y cortes.', pista: leerPista(carlosbot) },
 ].map(e => ({ ...e, id: e.id as IdPista, nombre: e.pista.nombre }));
 
 /** Con lo que abre la app la primera vez: el seguidor de línea y la pista de práctica. */

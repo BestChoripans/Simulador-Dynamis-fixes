@@ -8,11 +8,27 @@ import { entradasDe, recorridoEsperado } from '../ayuda/recorrido';
 const pista = (id: IdPista): Pista => PISTAS_DE_EJEMPLO.find(p => p.id === id)!.pista;
 const hitos = (p: Pista) => p.objetos.flatMap(o => (o.tipo === 'hito' ? [o.props.numero] : [])).sort((a, b) => a - b);
 
-it('hay tres pistas de ejemplo, con sus nombres', () => {
+it('hay cuatro pistas de ejemplo, con sus nombres', () => {
   expect(PISTAS_DE_EJEMPLO.map(p => [p.id, p.pista.nombre])).toEqual([
-    ['practica', 'Práctica FIRVI'], ['cruces', 'Cruces con marcas'], ['rampa', 'Rampa y baches'],
+    ['practica', 'Práctica FIRVI'], ['cruces', 'Cruces con marcas'], ['rampa', 'Rampa y baches'], ['carlosbot', 'Pista CarlosBot'],
   ]);
-  for (const { pista: p } of PISTAS_DE_EJEMPLO) expect([p.columnas, p.filas]).toEqual([8, 6]);
+  for (const { id, pista: p } of PISTAS_DE_EJEMPLO) expect([p.columnas, p.filas], id).toEqual(id === 'carlosbot' ? [9, 6] : [8, 6]);
+});
+
+it('la Pista CarlosBot cumple las bases y tiene lo de la mesa del taller', () => {
+  const p = pista('carlosbot');
+  expect(revisarPista(p)).toEqual([]);
+  expect(hitos(p)).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
+  const cuantas = (tipo: string) => p.baldosas.filter(b => b.tipo === tipo).length;
+  // El cuadrado de colores (2×2) es una cuadrícula de 3×3 baldosas con un cruce al centro y la marca verde.
+  expect(cuantas('cruce')).toBeGreaterThanOrEqual(2);
+  expect(p.baldosas.find(b => b.c === 1 && b.r === 2)).toMatchObject({ tipo: 'cruce', props: { marcas: { dd: true } } });
+  expect(cuantas('rampa')).toBe(2);
+  expect(cuantas('indicadorF2')).toBe(1);
+  expect(cuantas('cuadradoF1')).toBe(1);
+  expect(cuantas('cortes')).toBe(3);
+  expect(cuantas('giroL')).toBeGreaterThanOrEqual(8);
+  expect(cuantas('giroSuave')).toBeGreaterThanOrEqual(8);
 });
 
 it('las pistas nuevas cumplen las bases', () => {
