@@ -2,6 +2,8 @@ import { basicSetup } from 'codemirror';
 import { cpp } from '@codemirror/lang-cpp';
 import { EditorView, Decoration, MatchDecorator, ViewPlugin, type DecorationSet, type ViewUpdate } from '@codemirror/view';
 import { EditorState, StateEffect, StateField } from '@codemirror/state';
+import { HighlightStyle, syntaxHighlighting } from '@codemirror/language';
+import { tags as t } from '@lezer/highlight';
 
 export interface EditorCodigo {
   /** Muestra un archivo. Cada archivo guarda su propio historial: deshacer nunca cruza de una pestaña a otra. */
@@ -66,24 +68,41 @@ const campoError = StateField.define<DecorationSet>({
   provide: f => EditorView.decorations.from(f),
 });
 
-/** Tema con la paleta de Dynamis. */
+/** Tema con la paleta de Dynamis: los colores salen de tema.css, así cambian con el modo oscuro. */
 const tema = EditorView.theme({
-  '&': { height: '470px', fontSize: '14px', backgroundColor: '#FFFFFF', color: '#12164A' },
+  '&': { height: '470px', fontSize: '14px', backgroundColor: 'var(--blanco)', color: 'var(--tinta)' },
   // Sin ligaduras: ">=" se ve como dos caracteres, igual que como se escribe.
   '.cm-scroller': { fontFamily: "'JetBrains Mono', monospace", lineHeight: '1.7', fontVariantLigatures: 'none' },
-  '.cm-gutters': { backgroundColor: '#FFFFFF', color: '#9AA6C9', border: 'none' },
-  '.cm-activeLine': { backgroundColor: '#F4FAFF' },
-  '.cm-activeLineGutter': { backgroundColor: '#DDF4FF', color: '#0B0F98' },
-  '&.cm-focused .cm-cursor': { borderLeftColor: '#0B0F98' },
-  '&.cm-focused .cm-selectionBackground, .cm-selectionBackground': { backgroundColor: '#DDF4FF' },
-  '.linea-error': { backgroundColor: '#FFE8EC', boxShadow: 'inset 4px 0 0 #C4314B' },
-  '.linea-ajustada': { backgroundColor: '#FFF4D6', boxShadow: 'inset 4px 0 0 #FFD166' },
-  '.marca-ajustar, .marca-ajustar span': { backgroundColor: '#FFF1CC', color: '#5C4300', borderRadius: '6px', fontStyle: 'normal', fontWeight: '600' },
+  '.cm-gutters': { backgroundColor: 'var(--blanco)', color: 'var(--cm-gutter)', border: 'none' },
+  '.cm-activeLine': { backgroundColor: 'var(--nube)' },
+  '.cm-activeLineGutter': { backgroundColor: 'var(--hielo)', color: 'var(--azul)' },
+  '.cm-cursor, .cm-dropCursor': { borderLeftColor: 'var(--azul)' },
+  '&.cm-focused .cm-cursor': { borderLeftColor: 'var(--azul)' },
+  '&.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground, .cm-selectionBackground, .cm-content ::selection': { backgroundColor: 'var(--hielo)' },
+  '.cm-matchingBracket, &.cm-focused .cm-matchingBracket': { backgroundColor: 'var(--hielo)', outline: '1px solid var(--borde)' },
+  '.cm-tooltip, .cm-panels': { backgroundColor: 'var(--blanco)', color: 'var(--tinta)', border: '1px solid var(--borde)' },
+  '.cm-tooltip-autocomplete > ul > li[aria-selected]': { backgroundColor: 'var(--hielo)', color: 'var(--azul)' },
+  '.cm-foldPlaceholder': { backgroundColor: 'var(--hielo)', color: 'var(--tinta-suave)', border: 'none' },
+  '.linea-error': { backgroundColor: 'var(--cm-error)', boxShadow: 'inset 4px 0 0 var(--cm-error-borde)' },
+  '.linea-ajustada': { backgroundColor: 'var(--cm-aj)', boxShadow: 'inset 4px 0 0 var(--sol)' },
+  '.marca-ajustar, .marca-ajustar span': { backgroundColor: 'var(--cm-marca)', color: 'var(--cm-marca-tinta)', borderRadius: '6px', fontStyle: 'normal', fontWeight: '600' },
 });
+
+/** Colores del código con la paleta de la app (los mismos en claro y oscuro, por variables CSS). */
+const colores = syntaxHighlighting(HighlightStyle.define([
+  { tag: [t.keyword, t.controlKeyword, t.operatorKeyword, t.modifier, t.bool, t.null, t.self], color: 'var(--cm-kw)', fontWeight: '600' },
+  { tag: [t.function(t.variableName), t.function(t.propertyName), t.macroName], color: 'var(--cm-fn)' },
+  { tag: [t.typeName, t.className, t.namespace, t.standard(t.typeName)], color: 'var(--cm-tipo)' },
+  { tag: [t.number, t.integer, t.float], color: 'var(--cm-num)' },
+  { tag: [t.string, t.character, t.special(t.string)], color: 'var(--cm-str)' },
+  { tag: [t.comment, t.lineComment, t.blockComment], color: 'var(--cm-com)', fontStyle: 'italic' },
+  { tag: [t.processingInstruction, t.meta], color: 'var(--cm-pre)', fontWeight: '600' },
+  { tag: t.invalid, color: 'var(--error)' },
+]));
 
 export function crearEditor(contenedor: HTMLElement, alCambiar: (texto: string) => void): EditorCodigo {
   const extensiones = [
-    basicSetup, cpp(), tema, campoError, campoAjustadas, destacarAjustar,
+    basicSetup, cpp(), tema, colores, campoError, campoAjustadas, destacarAjustar,
     EditorView.contentAttributes.of({ 'aria-label': 'Código del programa' }),
     // setState (cambiar de pestaña) no pasa por aquí: solo lo que escribe el estudiante.
     EditorView.updateListener.of(u => { if (u.docChanged) alCambiar(u.state.doc.toString()); }),

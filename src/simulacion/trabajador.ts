@@ -3,6 +3,7 @@ import { clasificarErrorEjecucion, ErrorSimulador } from './errores';
 import type { Pista } from '../pista/tipos';
 import type { ConfigRobot } from '../robot/config';
 import type { AmbitoTrabajador } from '../ui/ambito';
+import { canalDe } from './entrada';
 
 /** Worker de simulación: corre una prueba completa y envía instantáneas. */
 export interface MensajeAlSimulador {
@@ -14,6 +15,8 @@ export interface MensajeAlSimulador {
   semilla: number;
   ajustes?: Record<string, number>;
   control: SharedArrayBuffer;
+  /** Los canales de entrada (ver entrada.ts). */
+  entrada?: { serial: SharedArrayBuffer; bluetooth: SharedArrayBuffer };
 }
 export type MensajeDelSimulador = { tipo: 'instantanea'; datos: Instantanea } | { tipo: 'fin'; datos: FinEjecucion };
 
@@ -25,7 +28,8 @@ ambito.onmessage = async ({ data }) => {
   try {
     const fin = await ejecutarPrueba({
       modulo: m.modulo, pista: m.pista, robot: m.robot, desde: m.desde, semilla: m.semilla, ajustes: m.ajustes,
-      control: new Int32Array(m.control), publicar: datos => enviar({ tipo: 'instantanea', datos }),
+      control: new Int32Array(m.control),
+      entrada: m.entrada && { serial: canalDe(m.entrada.serial), bluetooth: canalDe(m.entrada.bluetooth) }, publicar: datos => enviar({ tipo: 'instantanea', datos }),
     });
     enviar({ tipo: 'fin', datos: fin });
   } catch (e) {

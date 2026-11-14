@@ -12,6 +12,7 @@
 #include <inttypes.h>
 #include <math.h>
 #include "esp_arduino_version.h"
+#include "sdkconfig.h"
 #include "dynamis_host.h"
 #include "pgmspace.h"
 #include "pins_arduino.h"
@@ -99,9 +100,10 @@ static inline void ledcDetachPin(uint8_t pin) { dynLedcDetachPin(pin); }
 static inline uint32_t ledcRead(uint8_t canal) { return dynLedcRead(canal); }
 static inline uint32_t ledcReadFreq(uint8_t canal) { return dynLedcReadFreq(canal); }
 #endif
-// Bluetooth (esp32-hal-bt.h): el simulador no tiene radio, así que siempre está apagada.
-static inline bool btStarted(void) { return false; }
-static inline bool btStop(void) { return true; }
+// Bluetooth (esp32-hal-bt.h): la enciende BluetoothSerial::begin y la pestaña Bluetooth hace de teléfono.
+static inline bool btStarted(void) { return (dyn_bt_estado() & 1) != 0; }
+static inline bool btStop(void) { dyn_bt_end(); return true; }
+static inline bool btStart(void) { return true; }
 
 #ifdef __cplusplus
 }

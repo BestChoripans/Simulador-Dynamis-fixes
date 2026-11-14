@@ -29,6 +29,21 @@ DYN_IMPORTAR("ledc_detach") int dyn_ledc_detach(uint8_t pin);
 DYN_IMPORTAR("serial_begin") void dyn_serial_begin(uint32_t baudios);
 DYN_IMPORTAR("serial_write") void dyn_serial_write(const uint8_t* datos, size_t largo);
 DYN_IMPORTAR("serial_available") int dyn_serial_available(void);
+/** El siguiente byte que llegó por el Serial (escrito en "Mensajes del robot"), o -1. */
+DYN_IMPORTAR("serial_read") int dyn_serial_read(void);
+DYN_IMPORTAR("serial_peek") int dyn_serial_peek(void);
+
+// Bluetooth clásico (BluetoothSerial): el "teléfono" es la pestaña Bluetooth de "Mensajes del robot".
+/** Enciende el Bluetooth con ese nombre visible. */
+DYN_IMPORTAR("bt_begin") void dyn_bt_begin(const char* nombre, size_t largo);
+DYN_IMPORTAR("bt_end") void dyn_bt_end(void);
+/** 1 = encendido, 2 = con un teléfono conectado (se suman). */
+DYN_IMPORTAR("bt_estado") int dyn_bt_estado(void);
+/** Envía al teléfono; devuelve cuántos bytes salieron (0 si no hay nadie conectado). */
+DYN_IMPORTAR("bt_write") size_t dyn_bt_write(const uint8_t* datos, size_t largo);
+DYN_IMPORTAR("bt_available") int dyn_bt_available(void);
+DYN_IMPORTAR("bt_read") int dyn_bt_read(void);
+DYN_IMPORTAR("bt_peek") int dyn_bt_peek(void);
 
 // Sensores: el simulador entrega la magnitud física en el instante actual; las librerías del
 // núcleo esperan lo que espera la librería real y convierten unidades.

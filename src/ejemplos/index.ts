@@ -40,6 +40,7 @@ const FICHAS: Ficha[] = [
   { id: 'marcas-color', nombre: 'Leer marcas de color en cruces', descripcion: 'Lee las marcas verdes antes de cada cruce y gira hacia donde indican.', pista: 'cruces' },
   { id: 'subir-rampa', nombre: 'Subir la rampa', descripcion: 'Mide la inclinación con el MPU6050 y acelera para subir la rampa.', pista: 'rampa' },
   { id: 'esquivar-obstaculo', nombre: 'Esquivar el obstáculo', descripcion: 'Ve el obstáculo con el sensor de distancia y lo rodea sin tocarlo.', pista: 'rampa' },
+  { id: 'control-bluetooth', nombre: 'Control por Bluetooth', descripcion: 'Maneja el robot desde el teléfono: conéctate en la pestaña Bluetooth y usa las flechas.', pista: 'practica' },
 ];
 
 const archivos = import.meta.glob('./proyectos/*/*', { query: '?raw', import: 'default', eager: true }) as Record<string, string>;

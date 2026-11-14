@@ -6,6 +6,7 @@ import { COSTOS_US, BUFER_SERIAL_BYTES, usPorCaracter } from './costos';
 import { crearAzar, type Azar } from './azar';
 import { ROBOT_POR_DEFECTO, type ConfigRobot, type SensorColor } from '../robot/config';
 import { BusI2C } from './i2c';
+import { conectado, disponibles, espiarCanal, fijarConectado, leerCanal, vaciarCanal, type Entrada } from './entrada';
 import { mundoPlano } from '../mundo/plano';
 import type { Mundo } from '../mundo/tipos';
 import { MODELOS_POR_DEFECTO, poseVL53, puntosQTR, puntoTCS, type Ambiente, type LecturaMPU, type LecturaTCS, type ModelosSensores } from './sensores';
@@ -41,7 +42,12 @@ export interface OpcionesSimulador {
   ambiente?: Ambiente;
   /** Valores de los parámetros @ajustar de esta prueba, por id (`grupo.nombre`); los que faltan usan el del código. */
   ajustes?: Record<string, number>;
+  /** Lo que la página le escribe al robot (Serial y Bluetooth). Sin esto, nadie escribe. */
+  entrada?: Entrada;
 }
+
+/** El Bluetooth del robot, para la pestaña Bluetooth. */
+export interface EstadoBluetooth { nombre: string | null; encendido: boolean; conectado: boolean }
 
 export interface ResultadoEjecucion { motivo: 'tiempo' | 'error' | 'detenido'; tiempoUs: number; error?: ErrorEjecucion }
 
@@ -72,6 +78,8 @@ function protegido<T>(origen: string, f: () => T): T {
 
 const AVISO_SERIAL_SIN_BEGIN = 'Usaste Serial.print sin Serial.begin(): en el robot real no se verá nada.';
 const AVISO_SERIAL_SIN_ENTRADA = 'En el simulador nadie escribe por el Serial: Serial.available() siempre da 0.';
+const AVISO_BT_SIN_TELEFONO = 'El robot envió algo por Bluetooth, pero ningún teléfono está conectado: presiona «Conectar teléfono» en la pestaña Bluetooth.';
+const NOMBRE_BT_POR_DEFECTO = 'ESP32';
 const BITS_ADC_POR_DEFECTO = 12;
 const MAXIMO_ADC_CRUDO = 4095;
 const BAUDIOS_POR_DEFECTO = 115200;
@@ -121,6 +129,11 @@ export class Simulador {
   private readonly decodificadorSerial = new TextDecoder('utf-8');
   private readonly decodificadorEstandar = new TextDecoder('utf-8');
   private readonly avisosPropios: string[] = [];
+  private readonly entrada: Entrada | null;
+  private btNombre: string | null = null;
+  private btEncendido = false;
+  private textoBt = '';
+  private readonly decodificadorBt = new TextDecoder('utf-8');
 
   private constructor(o: OpcionesSimulador) {
     this.robot = o.robot ?? ROBOT_POR_DEFECTO;
@@ -136,6 +149,12 @@ export class Simulador {
     this.modelos = { ...MODELOS_POR_DEFECTO, ...o.modelos };
     this.ambiente = o.ambiente ?? { luz: 'normal' };
     this.ajustes = o.ajustes ?? {};
+    this.entrada = o.entrada ?? null;
+    // El robot recién encendido no tiene a nadie conectado por Bluetooth.
+    if (this.entrada) {
+      fijarConectado(this.entrada.bluetooth, false);
+      vaciarCanal(this.entrada.bluetooth);
+    }
     this.estadoActual = this.dinamica.estadoInicial(o.poseInicial ?? { x: 0, y: 0, yaw: 0 }, this.robot, this.mundo);
     this.estadoAnterior = this.estadoActual;
     this.busI2C = new BusI2C(this.robot, {
@@ -174,6 +193,21 @@ export class Simulador {
     const texto = this.texto;
     this.texto = '';
     return texto;
+  }
+
+  /** Entrega y vacía lo que el robot envió por Bluetooth al teléfono. */
+  tomarBluetooth(): string {
+    const texto = this.textoBt;
+    this.textoBt = '';
+    return texto;
+  }
+
+  get bluetooth(): EstadoBluetooth {
+    return { nombre: this.btNombre, encendido: this.btEncendido, conectado: this.btConectado() };
+  }
+
+  private btConectado(): boolean {
+    return this.btEncendido && this.entrada !== null && conectado(this.entrada.bluetooth);
   }
 
   /**
@@ -351,9 +385,58 @@ export class Simulador {
         return bytes;
       },
       serialAvailable: () => {
-        this.avisar(AVISO_SERIAL_SIN_ENTRADA);
         this.avanzar(COSTOS_US.serialAvailable);
-        return 0;
+        if (!this.entrada) {
+          this.avisar(AVISO_SERIAL_SIN_ENTRADA);
+          return 0;
+        }
+        return disponibles(this.entrada.serial);
+      },
+      serialRead: () => {
+        this.avanzar(COSTOS_US.serialAvailable);
+        if (!this.entrada) this.avisar(AVISO_SERIAL_SIN_ENTRADA);
+        return this.entrada ? leerCanal(this.entrada.serial) : -1;
+      },
+      serialPeek: () => {
+        this.avanzar(COSTOS_US.serialAvailable);
+        return this.entrada ? espiarCanal(this.entrada.serial) : -1;
+      },
+      btBegin: nombre => {
+        this.btNombre = nombre ?? this.btNombre ?? NOMBRE_BT_POR_DEFECTO;
+        this.btEncendido = true;
+      },
+      btEnd: () => {
+        this.btEncendido = false;
+        if (this.entrada) {
+          fijarConectado(this.entrada.bluetooth, false);
+          vaciarCanal(this.entrada.bluetooth);
+        }
+      },
+      btEstado: () => {
+        this.avanzar(COSTOS_US.serialAvailable);
+        return (this.btEncendido ? 1 : 0) + (this.btConectado() ? 2 : 0);
+      },
+      btWrite: bytes => {
+        if (!this.btConectado()) {
+          this.avisar(AVISO_BT_SIN_TELEFONO);
+          this.avanzar(COSTOS_US.serialAvailable);
+          return 0;
+        }
+        this.avanzar(Math.max(1, bytes.length * COSTOS_US.btByte));
+        this.textoBt += this.decodificadorBt.decode(bytes, { stream: true });
+        return bytes.length;
+      },
+      btAvailable: () => {
+        this.avanzar(COSTOS_US.serialAvailable);
+        return this.btConectado() ? disponibles(this.entrada!.bluetooth) : 0;
+      },
+      btRead: () => {
+        this.avanzar(COSTOS_US.serialAvailable);
+        return this.btConectado() ? leerCanal(this.entrada!.bluetooth) : -1;
+      },
+      btPeek: () => {
+        this.avanzar(COSTOS_US.serialAvailable);
+        return this.btConectado() ? espiarCanal(this.entrada!.bluetooth) : -1;
       },
       azarU32: () => Math.floor(this.azarPrograma() * 4294967296) >>> 0,
       ajustable: (grupo, nombre, valor) => {

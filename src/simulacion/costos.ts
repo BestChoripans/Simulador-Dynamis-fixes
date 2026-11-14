@@ -8,6 +8,8 @@ export const COSTOS_US = {
   i2cByte: 22.5,
   /** Un aviso de una librería mal usada: así un ciclo que la llama sin parar no congela el tiempo. */
   aviso: 1,
+  /** Un byte por Bluetooth SPP (~ 100 kB/s en la práctica). */
+  btByte: 10,
 } as const;
 
 /** Búfer de transmisión del UART del ESP32. */

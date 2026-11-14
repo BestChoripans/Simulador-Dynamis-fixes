@@ -41,6 +41,14 @@ export function crearAcciones(raiz: Document, eventos: EventosAcciones): { mostr
   $('btn-probar').addEventListener('click', () => (OCUPADO.has(estado) ? eventos.alDetener() : eventos.alProbar()));
   pausa.addEventListener('click', () => (estado === 'pausa' ? eventos.alSeguir() : eventos.alPausar()));
   $('btn-inicio').addEventListener('click', () => eventos.alInicio());
+  // Ctrl + Enter (o ⌘ + Enter) prueba o detiene desde cualquier parte, también desde el editor.
+  raiz.defaultView?.addEventListener('keydown', e => {
+    if (e.key !== 'Enter' || !(e.ctrlKey || e.metaKey) || e.repeat) return;
+    if (raiz.querySelector('dialog[open]')) return;
+    e.preventDefault();
+    e.stopPropagation();
+    (OCUPADO.has(estado) ? eventos.alDetener : eventos.alProbar)();
+  }, { capture: true });
   velocidad.addEventListener('input', () => {
     const i = Number(velocidad.value);
     $('vel-out').textContent = ETIQUETAS[i];

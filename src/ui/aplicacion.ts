@@ -1,6 +1,7 @@
 import { crearPanelPrograma } from './programa';
 import { Bitacora, formatoTiempo } from './bitacora';
-import { crearConsola } from './consola';
+import { crearComunicacion } from './comunicacion';
+import { crearSelectorTema } from './tema-oscuro';
 import { registrarPrueba } from './pruebas';
 import { crearLienzo } from './lienzo';
 import { crearTarjetas } from './tarjetas';
@@ -113,8 +114,15 @@ export async function iniciarAplicacion(raiz: Document): Promise<void> {
 
   // Mensajes del robot.
   const bitacora = new Bitacora();
-  const consola = crearConsola($('consola'), $('pildora-nuevos'), $('btn-limpiar'), bitacora);
   let tActual = 0;
+  const comunicacion = crearComunicacion(raiz, bitacora, {
+    enviarSerial: bytes => simulacion.enviarSerial(bytes),
+    enviarBluetooth: bytes => simulacion.enviarBluetooth(bytes),
+    conectarBluetooth: si => simulacion.conectarBluetooth(si),
+    ahora: () => tActual,
+  });
+  const consola = { refrescar: () => comunicacion.refrescarSerial(), irAlFinal: () => comunicacion.irAlFinal() };
+  crearSelectorTema(raiz);
   const mensajeSistema = (texto: string) => {
     bitacora.agregarSistema(tActual, texto);
     consola.refrescar();
@@ -262,6 +270,7 @@ export async function iniciarAplicacion(raiz: Document): Promise<void> {
       bitacora.agregarSerial(i.t, i.serial);
       for (const aviso of i.avisos) bitacora.agregarSistema(i.t, aviso);
       consola.refrescar();
+      comunicacion.mostrarBluetooth(i.t, i.bluetooth);
       for (const e of i.juez.eventos.slice(eventosVistos)) (LOGROS.has(e.tipo) ? avisos.logro : avisos.aviso)(e.mensaje);
       eventosVistos = i.juez.eventos.length;
       if (i.mensaje) avisos.aviso(i.mensaje);
@@ -301,6 +310,7 @@ export async function iniciarAplicacion(raiz: Document): Promise<void> {
   acciones.fijarVelocidad(preferencias.velocidad);
   function mostrar(e: EstadoApp, progreso?: number) {
     acciones.mostrar(e, progreso);
+    comunicacion.habilitar(e === 'corriendo' || e === 'pausa');
   }
 
   /** Pasa a Programar la pista del editor y el robot de "Mi robot", si cambiaron. */

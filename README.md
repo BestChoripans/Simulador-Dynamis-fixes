@@ -9,8 +9,8 @@ subirlo al robot físico.
 
 - **Programar:** editor con pestañas; abrir una carpeta o un `.zip`, descargar el proyecto y
   autoguardado. **"Probar mi robot"** compila en el navegador y muestra al robot en la pista, con
-  pausa, velocidad y "Volver al inicio". Muestra los mensajes del `Serial`, lo que miden los
-  sensores, el juez virtual y los errores de compilación explicados en español. Bajo «Mi programa»
+  pausa, velocidad y "Volver al inicio" (atajo: **Ctrl + Enter**). Muestra los mensajes del `Serial` y
+  deja escribirle al robot (llega a `Serial.read()`), lo que miden los sensores, el juez virtual y los errores de compilación explicados en español. Bajo «Mi programa»
   se elige la versión de la placa esp32 con que se compila: **3.x** o **2.0.14**, la misma que tenga
   el Arduino IDE con que se sube el programa al robot.
 - **Construir pista:** las piezas de las bases (líneas, cortes, cruces con marcas, rampas, F1 y F2,
@@ -20,6 +20,11 @@ subirlo al robot físico.
   avisos. Se exporta e importa como `robot.json`.
 - **Ajustar parámetros:** prueba muchas veces los valores marcados con `@ajustar` en el código, con
   varias pruebas a la vez, un gráfico de recompensa y "Usar estos valores".
+- **Bluetooth:** la pestaña Bluetooth de "Mensajes del robot" es un teléfono simulado para
+  `BluetoothSerial`: cuando el programa hace `SerialBT.begin("Nombre")`, se conecta con «Conectar
+  teléfono», muestra lo que el robot envía y le escribe mensajes o letras con el control rápido
+  (F, B, L, R y S), como una app de control por Bluetooth.
+- **Modo oscuro:** el botón de la banda cambia entre claro y oscuro; si no se elige, sigue al sistema.
 - **Ejemplos:** proyectos para cada sensor (motores, línea, seguidores, cortes, marcas de color,
   rampa, obstáculo y giroscopio) y tres pistas.
 - **Ayuda:** una guía de cada sensor con un programa para copiar, las conexiones del robot, cómo se
@@ -45,10 +50,13 @@ subirlo al robot físico.
 El núcleo Arduino del ESP32 y las librerías de los sensores están reimplementados en
 [`src/nucleo/`](src/nucleo/), compatibles con la API pública de cada librería:
 
-- Arduino / ESP32 core 3.x o 2.0.14 (a elección, excluyentes): pines, tiempo, `Serial`, `String`,
-  `Wire` y `Wire1`. Lo que cambia entre las dos es el PWM: en la 3.x va por pin (`ledcAttach`,
+- Arduino / ESP32 core 3.x o 2.0.14 (a elección, excluyentes): pines, tiempo, `Serial` (también para
+  leer: `read`, `readStringUntil`, `parseInt`…), `String`, `Wire` y `Wire1`. Lo que cambia entre las dos es el PWM: en la 3.x va por pin (`ledcAttach`,
   `ledcWrite(pin, …)`) y en la 2.0.14 por canal (`ledcSetup`, `ledcAttachPin`, `ledcWrite(canal, …)`).
   `ESP_ARDUINO_VERSION_MAJOR` dice cuál se eligió;
+- `BluetoothSerial` del core (Bluetooth clásico, SPP): `begin`, `available`, `read`, `print`,
+  `hasClient`, `register_callback` (conexión y desconexión), `onData` y `disconnect`. No puede
+  conectarse como maestro a otro aparato;
 - `QTRSensors` de Pololu (v4);
 - `Adafruit_VL53L0X`;
 - `MPU6050_light` (de rfetick);

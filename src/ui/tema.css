@@ -1,4 +1,4 @@
-/* Layout: banda azul de identidad, barra de acciones grande, dos columnas (mi programa | pista + lo que siente el robot); en "Construir pista": paleta | pista | propiedades. Tema claro único: es la paleta de marca. */
+/* Layout: banda azul de identidad, barra de acciones grande, dos columnas (mi programa | pista + lo que siente el robot); en "Construir pista": paleta | pista | propiedades. Tema claro u oscuro (data-tema en <html>), con la misma paleta de marca. */
 :root {
   --azul: #0B0F98;
   --azul-2: #1C22B8;
@@ -462,3 +462,100 @@ button:disabled { opacity: .55; cursor: not-allowed; }
 .ay-tabla th, .ay-tabla td { padding: 6px 10px; border-top: 1px solid var(--hielo); text-align: left; vertical-align: top; }
 .ay-tabla th { font-weight: 600; white-space: nowrap; }
 .ay-tabla td { font-variant-numeric: tabular-nums; }
+
+/* ===== Mensajes del robot: pestañas USB · Serial y Bluetooth, con caja para escribirle al robot ===== */
+.canales { display: inline-flex; gap: 2px; padding: 3px; border-radius: 999px; background: var(--hielo); }
+.canal { border: 0; background: transparent; color: var(--tinta-suave); font-weight: 600; font-size: 13px; padding: 5px 12px; border-radius: 999px; display: inline-flex; align-items: center; gap: 6px; }
+.canal svg.ico { width: 16px; height: 16px; }
+.canal:hover { color: var(--azul); }
+.canal[aria-selected="true"] { background: var(--azul); color: var(--blanco); }
+.canal .punto { width: 8px; height: 8px; border-radius: 50%; background: var(--rosa); box-shadow: 0 0 0 2px var(--blanco); }
+.enviar { display: flex; gap: 8px; align-items: center; padding: 10px 14px 14px; border-top: 2px solid var(--hielo); flex-wrap: wrap; }
+.enviar input { flex: 1 1 200px; min-width: 0; border: 2px solid var(--borde); background: var(--nube); color: var(--tinta); border-radius: 999px; padding: 8px 14px; font-family: var(--f-codigo); font-size: 13.5px; }
+.enviar input:focus { border-color: var(--azul); outline: none; }
+.enviar input:disabled { opacity: .7; }
+.enviar select { border: 2px solid var(--hielo); background: var(--blanco); color: var(--tinta); border-radius: 999px; padding: 6px 10px; font: inherit; font-size: 13px; }
+.btn-enviar { background: var(--azul); color: var(--blanco); padding: 8px 16px; }
+.btn-enviar:hover:not(:disabled) { background: var(--azul-2); }
+.consola .enviado { color: var(--azul); font-weight: 600; }
+.consola .enviado span:last-child::before { content: "→ "; }
+.bt-estado { display: flex; gap: 12px; align-items: center; margin: 12px 14px 4px; padding: 10px 14px; border-radius: 14px; background: var(--hielo); border-left: 5px solid var(--borde); flex-wrap: wrap; }
+.bt-estado[data-estado="visible"] { border-left-color: var(--sol); }
+.bt-estado[data-estado="conectado"] { border-left-color: #2BB673; }
+.bt-telefono { width: 30px; height: 30px; flex: none; fill: none; stroke: var(--azul); stroke-width: 2; stroke-linecap: round; }
+.bt-estado[data-estado="conectado"] .bt-telefono { stroke: #2BB673; }
+.bt-textos { flex: 1 1 220px; min-width: 0; }
+.bt-textos b { display: block; font-family: var(--f-display); font-weight: 600; font-size: 16px; }
+.bt-textos small { color: var(--tinta-suave); font-size: 12.5px; }
+.bt-textos code, .control-codigo { font-family: var(--f-codigo); }
+.bt-textos code { background: var(--blanco); border-radius: 6px; padding: 0 4px; font-size: 12px; }
+.btn-bt { background: var(--azul); color: var(--blanco); padding: 8px 14px; }
+.btn-bt:hover:not(:disabled) { background: var(--azul-2); }
+.control-bt { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; margin: 4px 14px 10px; padding: 10px 12px; border: 2px dashed var(--hielo); border-radius: 14px; }
+.control-titulo { font-size: 11.5px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--tinta-suave); font-weight: 600; flex-basis: 100%; }
+.cruz { display: grid; grid-template-columns: repeat(3, 46px); grid-template-areas: ". arriba ." "izq centro der" ". abajo ."; gap: 4px; }
+.tecla { border: 0; background: var(--hielo); color: var(--azul); border-radius: 10px; height: 40px; font-size: 15px; font-weight: 700; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.05; }
+.tecla small { font-size: 10px; font-family: var(--f-codigo); opacity: .75; }
+.tecla:hover:not(:disabled) { background: var(--borde); }
+.tecla:active:not(:disabled) { transform: translateY(1px); }
+.tecla.alto { color: var(--error); }
+.control-codigo { flex: 1 1 180px; margin: 0; font-variant-ligatures: none; font-size: 11.5px; background: var(--nube); color: var(--tinta-suave); border-radius: 10px; padding: 8px 10px; overflow-x: auto; }
+
+/* Botón del tema: la luna en modo claro, el sol en modo oscuro. */
+.ico-sol { display: none; }
+[data-tema="oscuro"] .ico-sol { display: block; }
+[data-tema="oscuro"] .ico-luna { display: none; }
+
+/* Colores del código (CodeMirror), que cambian con el tema. */
+:root {
+  --cm-kw: #0B0F98; --cm-fn: #0B6FA8; --cm-tipo: #7A2E8E; --cm-num: #B4234A; --cm-str: #8A5A00; --cm-com: #6B7699; --cm-pre: #7A2E8E;
+  --cm-gutter: #9AA6C9; --cm-error: #FFE8EC; --cm-error-borde: #C4314B; --cm-aj: #FFF4D6; --cm-marca: #FFF1CC; --cm-marca-tinta: #5C4300;
+}
+
+/* ===== Modo oscuro: la misma paleta de marca sobre un azul noche ===== */
+[data-tema="oscuro"] {
+  --azul: #A3A9FF;
+  --azul-2: #BCC0FF;
+  --celeste: #4FB3E8;
+  --hielo: #232B66;
+  --nube: #0E1236;
+  --rosa: #FF8FA0;
+  --tinta: #E8ECFF;
+  --tinta-suave: #A9B2DE;
+  --blanco: #171C4A;
+  --borde: #36428A;
+  --error: #FF7F97;
+  --error-fondo: #3B1734;
+  --cm-kw: #A9AEFF; --cm-fn: #6CC6FF; --cm-tipo: #E19CF2; --cm-num: #FF8FA6; --cm-str: #FFCB6B; --cm-com: #8790C4; --cm-pre: #E19CF2;
+  --cm-gutter: #6570A8; --cm-error: #4A1A33; --cm-error-borde: #FF7F97; --cm-aj: #3D3212; --cm-marca: #4A3C12; --cm-marca-tinta: #FFE09A;
+  color-scheme: dark;
+}
+[data-tema="oscuro"] .banda { background: #0A0D3D; color: #FFFFFF; }
+[data-tema="oscuro"] .banda .modo, [data-tema="oscuro"] .btn-banda { color: #FFFFFF; }
+[data-tema="oscuro"] .banda .modo[aria-selected="true"] { background: var(--azul); color: #0A0D3D; }
+[data-tema="oscuro"] .ventana-cab { background: #0A0D3D; color: #FFFFFF; }
+[data-tema="oscuro"] .btn-probar { box-shadow: 0 4px 0 #5C62C9; }
+[data-tema="oscuro"] .btn-probar:active { box-shadow: 0 1px 0 #5C62C9; }
+[data-tema="oscuro"] .btn-mini:hover, [data-tema="oscuro"] .btn-ajustar:hover { background: var(--borde); }
+[data-tema="oscuro"] .chip-estado.vivo i { box-shadow: 0 0 0 4px #164A35; }
+[data-tema="oscuro"] .burbuja, [data-tema="oscuro"] .error-pista { border-color: #6A2A48; }
+[data-tema="oscuro"] .linea.nueva, [data-tema="oscuro"] .hito.ok, [data-tema="oscuro"] .ay-aviso { background: #3D3212; color: #FFE09A; }
+[data-tema="oscuro"] .t-aj { background: #4A3C12; color: #FFE09A; }
+[data-tema="oscuro"] .btn-usar { color: #1A1400; box-shadow: 0 4px 0 #A57E22; }
+[data-tema="oscuro"] .pid .chip.ok { color: #6FE0A8; }
+[data-tema="oscuro"] .g-grid { stroke: #2A3370; }
+[data-tema="oscuro"] .g-punto, [data-tema="oscuro"] .g-record { stroke: var(--blanco); }
+[data-tema="oscuro"] .pildora-nuevos { color: #0A0D3D; box-shadow: 0 4px 12px rgba(0, 0, 0, .45); }
+[data-tema="oscuro"] .brujula circle:first-child { fill: var(--nube); stroke: var(--borde); }
+[data-tema="oscuro"] #aguja path:first-child { fill: var(--azul); }
+[data-tema="oscuro"] canvas.lienzo, [data-tema="oscuro"] canvas.mini, [data-tema="oscuro"] .robot-dibujo { box-shadow: 0 0 0 2px var(--borde); }
+[data-tema="oscuro"] .ventana, [data-tema="oscuro"] .dialogo, [data-tema="oscuro"] .aviso-global > div { box-shadow: 0 24px 60px rgba(0, 0, 0, .55); }
+[data-tema="oscuro"] .dialogo { background: var(--blanco); }
+[data-tema="oscuro"] .ventana-fondo, [data-tema="oscuro"] .ventana-robot::backdrop, [data-tema="oscuro"] .ventana-ajuste::backdrop,
+[data-tema="oscuro"] .ventana-ejemplos::backdrop, [data-tema="oscuro"] .ventana-ayuda::backdrop { background: rgba(0, 0, 0, .6); }
+@media (prefers-reduced-motion: no-preference) {
+  body, .card, .sensor, .banda { transition: background-color .2s ease, color .2s ease, border-color .2s ease; }
+}
+@media (max-width: 640px) {
+  .control-codigo { display: none; }
+}

@@ -6,19 +6,11 @@ void HardwareSerial::begin(unsigned long baudios, uint32_t, int8_t, int8_t, bool
   dyn_serial_begin(static_cast<uint32_t>(baudios));
 }
 
-// En el simulador nadie escribe por el Serial. Se le avisa al simulador igual, para que
-// esperar datos consuma tiempo virtual en vez de congelar la página.
+// Lo que se escribe en "Mensajes del robot" llega por aquí. Cada llamada consume un poco de tiempo
+// virtual, así esperar datos en un while no congela la página.
 int HardwareSerial::available() { return dyn_serial_available(); }
-
-int HardwareSerial::read() {
-  dyn_serial_available();
-  return -1;
-}
-
-int HardwareSerial::peek() {
-  dyn_serial_available();
-  return -1;
-}
+int HardwareSerial::read() { return dyn_serial_read(); }
+int HardwareSerial::peek() { return dyn_serial_peek(); }
 
 size_t HardwareSerial::write(uint8_t c) {
   dyn_serial_write(&c, 1);

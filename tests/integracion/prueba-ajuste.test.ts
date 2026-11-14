@@ -41,7 +41,7 @@ describe('una prueba de entrenamiento', { timeout: 180_000 }, () => {
   beforeAll(async () => {
     nucleo = await cargarNucleoDesdeDisco();
     seguidor = await compilarParaPrueba(SEGUIDOR, nucleo, 'seguidor');
-  });
+  }, 120_000);
 
   it('el registro tiene un paso cada 10 ms con estado, lecturas, motores y eventos', async () => {
     const recompensa = espia({ ...recompensaDePrueba, debeTerminar: () => false });

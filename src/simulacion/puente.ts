@@ -23,6 +23,19 @@ export interface Anfitrion {
   serialWrite(bytes: Uint8Array): void;
   /** Bytes recibidos por el Serial que el programa todavía no lee. */
   serialAvailable(): number;
+  /** El siguiente byte recibido por el Serial, o -1. */
+  serialRead(): number;
+  serialPeek(): number;
+  /** Enciende el Bluetooth; null = con el nombre que ya tenía. */
+  btBegin(nombre: string | null): void;
+  btEnd(): void;
+  /** 1 = encendido, 2 = con un teléfono conectado (se suman). */
+  btEstado(): number;
+  /** Envía al teléfono y devuelve cuántos bytes salieron. */
+  btWrite(bytes: Uint8Array): number;
+  btAvailable(): number;
+  btRead(): number;
+  btPeek(): number;
   /** Aviso amigable desde una librería del núcleo. */
   aviso(texto: string): void;
   /** Distancia del VL53L0X en mm (0…8190). */
@@ -86,6 +99,17 @@ const DYNAMIS: Record<string, FabricaImport> = {
   serial_write: (a, memoria) => (ptr: number, largo: number) =>
     a.serialWrite(new Uint8Array(memoria().buffer, u32(ptr), u32(largo)).slice()),
   serial_available: a => () => a.serialAvailable(),
+  serial_read: a => () => a.serialRead(),
+  serial_peek: a => () => a.serialPeek(),
+  bt_begin: (a, memoria) => (ptr: number, largo: number) =>
+    a.btBegin(u32(largo) === 0 ? null : new TextDecoder().decode(new Uint8Array(memoria().buffer, u32(ptr), u32(largo)))),
+  bt_end: a => () => a.btEnd(),
+  bt_estado: a => () => a.btEstado(),
+  bt_write: (a, memoria) => (ptr: number, largo: number) =>
+    a.btWrite(new Uint8Array(memoria().buffer, u32(ptr), u32(largo)).slice()),
+  bt_available: a => () => a.btAvailable(),
+  bt_read: a => () => a.btRead(),
+  bt_peek: a => () => a.btPeek(),
   aviso: (a, memoria) => (ptr: number, largo: number) =>
     a.aviso(new TextDecoder().decode(new Uint8Array(memoria().buffer, u32(ptr), u32(largo)))),
   vl53_medir: a => () => a.vl53Medir(),

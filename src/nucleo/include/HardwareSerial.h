@@ -1,20 +1,20 @@
-// HardwareSerial.h — el puerto Serial del ESP32 (UART0), conectado a "Mensajes del robot".
+// HardwareSerial.h — el puerto Serial del ESP32 (UART0), conectado a "Mensajes del robot". Lo que
+// se escribe en la caja de texto de esa pestaña le llega al programa por Serial.read().
 #pragma once
 
-#include "Print.h"
+#include "Stream.h"
 
 #define SERIAL_8N1 0x800001c
 
-class HardwareSerial : public Print {
+class HardwareSerial : public Stream {
 public:
   void begin(unsigned long baudios, uint32_t config = SERIAL_8N1, int8_t rxPin = -1, int8_t txPin = -1,
              bool invertir = false, unsigned long timeout = 20000UL, uint8_t umbralFifo = 112);
   void end() {}
-  int available();
-  int read();
-  int peek();
-  void flush() {}
-  void setTimeout(unsigned long) {}
+  int available() override;
+  int read() override;
+  int peek() override;
+  void flush() override {}
   size_t write(uint8_t c) override;
   size_t write(const uint8_t* buffer, size_t size) override;
   // Como en el core: write(0) y write(65) envían un byte en vez de ser ambiguos.

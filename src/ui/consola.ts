@@ -7,7 +7,7 @@ const TOLERANCIA_PX = 4;
  * "Mensajes del robot": dibuja una vez por cuadro, se queda pegada al final mientras el
  * usuario mira el final y, si subió a leer, no lo mueve y muestra "Mensajes nuevos ↓".
  */
-export function crearConsola(caja: HTMLElement, pildora: HTMLElement, botonLimpiar: HTMLElement, bitacora: Bitacora): { refrescar(): void; irAlFinal(): void } {
+export function crearConsola(caja: HTMLElement, pildora: HTMLElement, botonLimpiar: HTMLElement | null, bitacora: Bitacora): { refrescar(): void; irAlFinal(): void } {
   const doc = caja.ownerDocument;
   let dibujada = -1;
   let pendiente = false;
@@ -19,7 +19,7 @@ export function crearConsola(caja: HTMLElement, pildora: HTMLElement, botonLimpi
   };
   const fila = (l: LineaConsola) => {
     const div = doc.createElement('div');
-    if (l.tipo === 'sistema') div.className = 'sistema';
+    if (l.tipo !== 'serial') div.className = l.tipo;
     const t = doc.createElement('span');
     t.className = 't';
     t.textContent = formatoTiempo(l.t);
@@ -67,7 +67,7 @@ export function crearConsola(caja: HTMLElement, pildora: HTMLElement, botonLimpi
 
   caja.addEventListener('scroll', () => { if (alFinal()) pildora.hidden = true; });
   pildora.addEventListener('click', bajar);
-  botonLimpiar.addEventListener('click', () => {
+  botonLimpiar?.addEventListener('click', () => {
     bitacora.limpiar();
     refrescar();
   });

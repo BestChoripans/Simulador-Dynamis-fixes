@@ -1,5 +1,6 @@
 import { crearControl, fijarVelocidad, pausar, pedir, IDX, type Pedido } from './control';
 import type { FinEjecucion, Instantanea } from './ejecucion';
+import { crearEntrada, escribirCanal, fijarConectado, vaciarCanal, type Entrada } from './entrada';
 import type { MensajeAlSimulador, MensajeDelSimulador } from './trabajador';
 import type { Pista } from '../pista/tipos';
 import type { ConfigRobot } from '../robot/config';
@@ -33,6 +34,7 @@ const SIN_LATIDO_MS = 2000;
 export class ClienteSimulacion {
   private trabajador: Worker | null = null;
   private control: Int32Array | null = null;
+  private entrada: Entrada | null = null;
   private vigilante: ReturnType<typeof setInterval> | null = null;
   private ultimoLatido = 0;
   private ultimoCambio = 0;
@@ -51,15 +53,18 @@ export class ClienteSimulacion {
     if (this.trabajador) this.detener();
     const control = crearControl();
     fijarVelocidad(control, o.velocidad);
+    const entrada = crearEntrada();
     const trabajador = this.crearTrabajador();
     trabajador.onmessage = e => this.recibir(trabajador, e.data as MensajeDelSimulador);
     const mensaje: MensajeAlSimulador = {
       tipo: 'iniciar', modulo: o.modulo, pista: o.pista, robot: o.robot, desde: o.desde, semilla: o.semilla,
       ajustes: o.ajustes, control: control.buffer as SharedArrayBuffer,
+      entrada: { serial: entrada.serial.memoria, bluetooth: entrada.bluetooth.memoria },
     };
     trabajador.postMessage(mensaje);
     this.trabajador = trabajador;
     this.control = control;
+    this.entrada = entrada;
     this.pausado = false;
     this.avisado = false;
     this.ultimoLatido = Atomics.load(control, IDX.latido);
@@ -87,6 +92,23 @@ export class ClienteSimulacion {
     if (this.control) pedir(this.control, p);
   }
 
+  /** Le escribe al robot por el Serial; devuelve cuántos bytes entraron (0 si no corre). */
+  enviarSerial(bytes: Uint8Array): number {
+    return this.entrada ? escribirCanal(this.entrada.serial, bytes) : 0;
+  }
+
+  /** El teléfono simulado le escribe al robot por Bluetooth. */
+  enviarBluetooth(bytes: Uint8Array): number {
+    return this.entrada ? escribirCanal(this.entrada.bluetooth, bytes) : 0;
+  }
+
+  /** Conecta o desconecta el teléfono simulado. */
+  conectarBluetooth(si: boolean): void {
+    if (!this.entrada) return;
+    if (!si) vaciarCanal(this.entrada.bluetooth);
+    fijarConectado(this.entrada.bluetooth, si);
+  }
+
   detener(): void {
     this.trabajador?.terminate();
     this.limpiar();
@@ -97,6 +119,7 @@ export class ClienteSimulacion {
     this.vigilante = null;
     this.trabajador = null;
     this.control = null;
+    this.entrada = null;
     this.pausado = false;
   }
 

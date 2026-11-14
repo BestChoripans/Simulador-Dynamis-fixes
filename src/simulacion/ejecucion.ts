@@ -1,4 +1,5 @@
-import { Simulador, type LecturasVista, type Pose } from './simulador';
+import { Simulador, type EstadoBluetooth, type LecturasVista, type Pose } from './simulador';
+import type { Entrada } from './entrada';
 import { Ritmo, tomarPedido, type Reloj } from './control';
 import { crearAzar } from './azar';
 import type { Motores } from './motores';
@@ -21,6 +22,8 @@ export interface Instantanea {
   juez: EstadoJuez;
   /** Texto del Serial desde la instantánea anterior. */
   serial: string;
+  /** El Bluetooth del robot y lo que envió al teléfono desde la instantánea anterior. */
+  bluetooth: EstadoBluetooth & { texto: string };
   /** Avisos del simulador que aparecieron desde la instantánea anterior. */
   avisos: string[];
   /** Respuesta a un pedido que no se pudo hacer ("Ya usaste los 3 reinicios."). */
@@ -44,6 +47,8 @@ export interface OpcionesPrueba {
   /** Valores de los parámetros @ajustar (para "Ver esta prueba en la pista"). */
   ajustes?: Record<string, number>;
   control: Int32Array;
+  /** Lo que la página le escribe al robot mientras corre (Serial y Bluetooth). */
+  entrada?: Entrada;
   publicar: (i: Instantanea) => void;
   /** Reloj real (por defecto, performance.now y Atomics.wait); las pruebas usan uno de mentira. */
   reloj?: Reloj;
@@ -85,6 +90,7 @@ export async function ejecutarPrueba(o: OpcionesPrueba): Promise<FinEjecucion> {
       o.publicar({
         reinicio, t: sim.tiempoUs / 1e6, estado: { x, y, z, yaw, pitch, roll }, motores: sim.motores,
         sensores: sim.medirParaVista(azarVista), juez: juez.estado, serial: sim.tomarSerial(),
+        bluetooth: { ...sim.bluetooth, texto: sim.tomarBluetooth() },
         avisos, mensaje,
       });
       mensaje = null;
@@ -92,7 +98,7 @@ export async function ejecutarPrueba(o: OpcionesPrueba): Promise<FinEjecucion> {
     };
     sim = await Simulador.crear({
       modulo: o.modulo, mundo, robot: o.robot, poseInicial: pose, semilla: o.semilla, ajustes: o.ajustes,
-      ambiente: o.pista.ambiente,
+      ambiente: o.pista.ambiente, entrada: o.entrada,
       alPasoFisica: (tUs, estado) => {
         juez.actualizar(tUs, estado);
         if (juez.termino) return sim.detener();

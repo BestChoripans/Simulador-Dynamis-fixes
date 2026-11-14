@@ -1,5 +1,5 @@
 /** Las líneas de "Mensajes del robot", sin DOM: el Serial cortado en líneas y los avisos del sistema. */
-export interface LineaConsola { t: number; texto: string; tipo: 'serial' | 'sistema' }
+export interface LineaConsola { t: number; texto: string; tipo: 'serial' | 'sistema' | 'enviado' }
 
 /** "12,3 s": el tiempo simulado de cada línea. */
 export function formatoTiempo(t: number): string {
@@ -45,6 +45,12 @@ export class Bitacora {
 
   agregarSistema(t: number, texto: string): void {
     this.cerrar({ t, texto, tipo: 'sistema' });
+    this.cambios++;
+  }
+
+  /** Lo que el estudiante le escribió al robot, para verlo junto a la respuesta. */
+  agregarEnviado(t: number, texto: string): void {
+    this.cerrar({ t, texto, tipo: 'enviado' });
     this.cambios++;
   }
 

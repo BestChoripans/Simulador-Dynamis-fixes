@@ -7,6 +7,15 @@
 <meta name="theme-color" content="#0B0F98">
 <link rel="icon" href="iconos/mascota.svg" type="image/svg+xml">
 <link rel="manifest" href="manifest.webmanifest">
+<script>
+  // El tema antes de dibujar la página (sin destello claro): el elegido, o el del sistema.
+  (function () {
+    var tema = null;
+    try { tema = localStorage.getItem('dynamis.tema'); } catch (e) {}
+    if (tema !== 'oscuro' && tema !== 'claro') tema = matchMedia('(prefers-color-scheme: dark)').matches ? 'oscuro' : 'claro';
+    document.documentElement.dataset.tema = tema;
+  })();
+</script>
 </head>
 <body style="margin:0">
 
@@ -48,6 +57,11 @@
       <button class="btn-banda" id="btn-mi-robot" aria-haspopup="dialog"><svg class="ico" viewBox="0 0 24 24"><rect x="5" y="8" width="14" height="11" rx="3"/><path d="M12 8V4"/><circle cx="12" cy="3.5" r="1"/><circle cx="9.5" cy="13" r="1"/><circle cx="14.5" cy="13" r="1"/><path d="M3 12v3M21 12v3"/></svg><span>Mi robot</span></button>
       <button class="btn-banda" id="btn-ejemplos" aria-haspopup="dialog"><svg class="ico" viewBox="0 0 24 24"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M4 19V5"/></svg><span>Ejemplos</span></button>
       <button class="btn-banda" id="btn-instalar" hidden><svg class="ico" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg><span>Instalar en este computador</span></button>
+      <button class="btn-banda" id="btn-tema" aria-pressed="false" title="Cambiar entre modo claro y oscuro">
+        <svg class="ico ico-luna" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>
+        <svg class="ico ico-sol" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+        <span id="txt-tema">Modo oscuro</span>
+      </button>
       <button class="btn-banda" id="btn-ayuda" aria-haspopup="dialog"><svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.2a2.5 2.5 0 1 1 3.4 2.3c-.7.3-1 .9-1 1.7"/><circle cx="12" cy="16.8" r=".6"/></svg><span>Ayuda</span></button>
     </div>
   </div>
@@ -58,7 +72,7 @@
   <!-- ================= PROGRAMAR ================= -->
   <section class="vista" id="vista-programar" role="tabpanel" aria-labelledby="tab-programar">
     <div class="acciones">
-      <button class="btn-probar" id="btn-probar">
+      <button class="btn-probar" id="btn-probar" title="Atajo: Ctrl + Enter">
         <svg class="ico relleno" viewBox="0 0 24 24" id="ico-probar"><path d="M7 4.5v15l12.5-7.5z"/></svg>
         <span id="txt-probar">Probar mi robot</span>
       </button>
@@ -112,15 +126,72 @@
           </div>
         </article>
 
-        <article class="card">
+        <article class="card" id="tarjeta-mensajes">
           <header>
             <h2><svg class="ico" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></svg>Mensajes del robot</h2>
-            <span class="chip">Serial · 115200</span>
-            <div class="header-der"><button class="btn-mini" id="btn-limpiar">Limpiar</button></div>
+            <div class="canales" role="tablist" aria-label="Por dónde habla el robot">
+              <button class="canal" role="tab" id="tab-serial" aria-selected="true" aria-controls="panel-serial" tabindex="0">
+                <svg class="ico" viewBox="0 0 24 24"><path d="M9 3v5M15 3v5M7 8h10v4a5 5 0 0 1-10 0zM12 17v4"/></svg>USB · Serial
+              </button>
+              <button class="canal" role="tab" id="tab-bt" aria-selected="false" aria-controls="panel-bt" tabindex="-1">
+                <svg class="ico" viewBox="0 0 24 24"><path d="M7 7l10 10-5 4V3l5 4L7 17"/></svg>Bluetooth<i class="punto" id="bt-punto" hidden></i>
+              </button>
+            </div>
+            <div class="header-der"><button class="btn-mini" id="btn-limpiar" title="Borra los mensajes de esta pestaña">Limpiar</button></div>
           </header>
-          <div class="consola-caja">
-            <div class="consola" id="consola" aria-live="off"></div>
-            <button class="pildora-nuevos" id="pildora-nuevos" hidden>Mensajes nuevos ↓</button>
+
+          <div class="panel-canal" role="tabpanel" id="panel-serial" aria-labelledby="tab-serial">
+            <div class="consola-caja">
+              <div class="consola" id="consola" aria-live="off"></div>
+              <button class="pildora-nuevos" id="pildora-nuevos" hidden>Mensajes nuevos ↓</button>
+            </div>
+            <form class="enviar" id="form-serial" autocomplete="off">
+              <input type="text" id="in-serial" aria-label="Mensaje para el robot por el Serial" placeholder="Prueba tu robot para escribirle por el Serial" disabled>
+              <select id="fin-serial" aria-label="Final de línea" title="Qué se agrega al final de cada mensaje">
+                <option value="nl">Nueva línea</option>
+                <option value="nada">Sin final</option>
+                <option value="crnl">NL y CR</option>
+              </select>
+              <button class="btn-mini btn-enviar" type="submit" disabled><svg class="ico" viewBox="0 0 24 24"><path d="M4 12l16-8-6 16-2-7z"/></svg>Enviar</button>
+            </form>
+          </div>
+
+          <div class="panel-canal" role="tabpanel" id="panel-bt" aria-labelledby="tab-bt" hidden>
+            <div class="bt-estado" id="bt-estado" data-estado="apagado">
+              <svg class="bt-telefono" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="2.5" width="12" height="19" rx="3"/><path d="M10.5 18.5h3"/></svg>
+              <div class="bt-textos">
+                <b id="bt-titulo">Teléfono simulado</b>
+                <small id="bt-detalle">Prueba tu robot. Si tu programa usa <code>SerialBT.begin("Nombre")</code>, aquí podrás conectarte a él.</small>
+              </div>
+              <button class="btn-mini btn-bt" id="btn-bt-conectar" disabled>Conectar teléfono</button>
+            </div>
+            <div class="consola-caja">
+              <div class="consola" id="consola-bt" aria-live="off"></div>
+              <button class="pildora-nuevos" id="pildora-bt" hidden>Mensajes nuevos ↓</button>
+            </div>
+            <div class="control-bt" id="control-bt" aria-label="Control rápido: cada botón envía una letra">
+              <span class="control-titulo">Control rápido</span>
+              <div class="cruz">
+                <button class="tecla" data-envia="F" style="grid-area:arriba" title="Envía F (adelante)" aria-label="Adelante (F)" disabled>▲<small>F</small></button>
+                <button class="tecla" data-envia="L" style="grid-area:izq" title="Envía L (izquierda)" aria-label="Izquierda (L)" disabled>◀<small>L</small></button>
+                <button class="tecla alto" data-envia="S" style="grid-area:centro" title="Envía S (detener)" aria-label="Detener (S)" disabled>■<small>S</small></button>
+                <button class="tecla" data-envia="R" style="grid-area:der" title="Envía R (derecha)" aria-label="Derecha (R)" disabled>▶<small>R</small></button>
+                <button class="tecla" data-envia="B" style="grid-area:abajo" title="Envía B (atrás)" aria-label="Atrás (B)" disabled>▼<small>B</small></button>
+              </div>
+              <pre class="control-codigo">if (SerialBT.available()) {
+  char c = SerialBT.read();
+  if (c == 'F') adelante();
+}</pre>
+            </div>
+            <form class="enviar" id="form-bt" autocomplete="off">
+              <input type="text" id="in-bt" aria-label="Mensaje para el robot por Bluetooth" placeholder="Conecta el teléfono para escribirle al robot" disabled>
+              <select id="fin-bt" aria-label="Final de línea" title="Qué se agrega al final de cada mensaje">
+                <option value="nl">Nueva línea</option>
+                <option value="nada">Sin final</option>
+                <option value="crnl">NL y CR</option>
+              </select>
+              <button class="btn-mini btn-enviar" type="submit" disabled><svg class="ico" viewBox="0 0 24 24"><path d="M4 12l16-8-6 16-2-7z"/></svg>Enviar</button>
+            </form>
           </div>
           <div class="logro" id="logro" hidden>
             <svg class="ico relleno" viewBox="0 0 24 24"><path d="M12 3l2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.3 6.5 20.2l1-6.2L3 9.6l6.2-.9z"/></svg>
