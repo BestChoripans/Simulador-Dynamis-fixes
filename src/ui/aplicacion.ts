@@ -5,6 +5,8 @@ import { crearSelectorTema } from './tema-oscuro';
 import { crearBotonRobot } from './boton-robot';
 import { registrarPrueba } from './pruebas';
 import { crearLienzo } from './lienzo';
+import { crearVistaDoble } from './vista-doble';
+import { poseInicial } from '../pista/serializacion';
 import { crearTarjetas } from './tarjetas';
 import { crearTarjetaJuez } from './juez';
 import { crearAcciones, type EstadoApp } from './acciones';
@@ -31,6 +33,7 @@ import { primerError } from '../compilador/amigables';
 import { esVersionEsp32, VERSION_POR_DEFECTO } from '../compilador/version';
 import { ClienteSimulacion } from '../simulacion/cliente';
 import type { FinEjecucion, Instantanea } from '../simulacion/ejecucion';
+import type { Pose } from '../simulacion/simulador';
 import { puntosDePartida } from '../pista/puntos';
 import { ROBOT_POR_DEFECTO, type ConfigRobot } from '../robot/config';
 import { migrarRobotGuardado } from '../robot/archivo';
@@ -161,6 +164,9 @@ export async function iniciarAplicacion(raiz: Document): Promise<void> {
     alElegir: s => panelPista.mostrar(editorPista.pista(), s),
   });
   editorPista.mostrar(pista);
+  const vistaEditor = crearVistaDoble(raiz, { nombre: 'vista-editor', caja: $('caja-editor'), lienzo2D: $('lienzo-editor'), robot: robotEditado });
+  vistaEditor.mostrarPista(pista);
+  vistaEditor.reiniciar(poseInicial(pista));
   const archivoPista = crearArchivoPista(raiz, {
     pista: () => pistaEditada,
     alAbrir: p => {
@@ -176,17 +182,29 @@ export async function iniciarAplicacion(raiz: Document): Promise<void> {
   $('btn-ejemplos').addEventListener('click', () => ventanaEjemplos.abrir());
   /** La pista editada se guarda y, si no corre una prueba, se ve al tiro en Programar. */
   function alEditarPista(p: Pista) {
+    vistaEditor.mostrarPista(p);
+    vistaEditor.reiniciar(poseInicial(p));
     pistaEditada = p;
     guardarPista(p);
     if (!simulacion.corriendo) dejarListo();
   }
 
   // Pista, tarjetas y juez.
-  const lienzo = crearLienzo($('lienzo-sim') as HTMLCanvasElement, robot);
+  const lienzo2D = crearLienzo($('lienzo-sim') as HTMLCanvasElement, robot);
+  const vistaSim = crearVistaDoble(raiz, { nombre: 'vista-sim', caja: $('caja-sim'), lienzo2D: $('lienzo-sim'), robot });
+  // La pista de Programar se ve en 2D y en 3D: cada cambio va a las dos.
+  const lienzo = {
+    ...lienzo2D,
+    mostrarPista(p: Pista) { lienzo2D.mostrarPista(p); vistaSim.mostrarPista(p); },
+    cambiarRobot(r: ConfigRobot) { lienzo2D.cambiarRobot(r); vistaSim.cambiarRobot(r); },
+    mostrarInstantanea(i: Instantanea) { lienzo2D.mostrarInstantanea(i); vistaSim.mostrarInstantanea(i); },
+    reiniciar(p: Pose) { lienzo2D.reiniciar(p); vistaSim.reiniciar(p); },
+  };
   const ventanaRobot = crearVentanaRobot(raiz, {
     robot: () => robotEditado,
     alCambiar: r => {
       robotEditado = r;
+      vistaEditor.cambiarRobot(r);
       guardarRobot(r);
       if (!simulacion.corriendo) dejarListo();
     },

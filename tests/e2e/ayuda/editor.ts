@@ -37,6 +37,8 @@ export const elegirPieza = (page: Page, nombre: string) =>
 
 /** Arrastra con el mouse desde un punto de la pista (mm) hasta otro. */
 export async function arrastrar(page: Page, desde: { x: number; y: number }, hasta: { x: number; y: number }): Promise<void> {
+  // El mouse solo llega a lo que se ve: primero se trae el lienzo a la vista.
+  await page.locator('#lienzo-editor').scrollIntoViewIfNeeded();
   const caja = (await page.locator('#lienzo-editor').boundingBox())!;
   const a = await enPantalla(page, desde.x, desde.y);
   const b = await enPantalla(page, hasta.x, hasta.y);

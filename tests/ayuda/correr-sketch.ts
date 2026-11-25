@@ -1,7 +1,7 @@
 import { cargarNucleoDesdeDisco } from '../../src/compilador/nucleo-node';
 import type { ArchivosNucleo } from '../../src/compilador/compilar';
 import type { VersionEsp32 } from '../../src/compilador/version';
-import { Simulador, type EstadoRobot, type Pose, type ResultadoEjecucion } from '../../src/simulacion/simulador';
+import { Simulador, type EstadoRobot, type ModeloDinamica, type Pose, type ResultadoEjecucion } from '../../src/simulacion/simulador';
 import type { ModelosSensores } from '../../src/simulacion/sensores';
 import { crearMundo } from '../../src/mundo/pista';
 import { poseInicial } from '../../src/pista/serializacion';
@@ -25,6 +25,8 @@ export interface OpcionesSketch {
   version?: VersionEsp32;
   /** Lo que la página le escribe al robot (Serial y Bluetooth). */
   entrada?: Entrada;
+  /** El modelo de dinámica (por defecto, el realista de src/modelos/dinamica.js). */
+  dinamica?: ModeloDinamica;
 }
 
 /**
@@ -37,7 +39,7 @@ export async function correrSketch(codigo: string, o: OpcionesSketch = {}): Prom
   const modulo = await compilarParaPrueba({ 'p.ino': codigo }, await nucleo, 'p', { version: o.version });
   const sim = await Simulador.crear({
     modulo, mundo: crearMundo(pista), robot: o.robot, modelos: o.modelos, ambiente: pista.ambiente,
-    poseInicial: o.pose ?? poseInicial(pista), alPasoFisica: o.alPasoFisica, entrada: o.entrada,
+    poseInicial: o.pose ?? poseInicial(pista), alPasoFisica: o.alPasoFisica, entrada: o.entrada, dinamica: o.dinamica,
   });
   const resultado = sim.ejecutar(o.duracionUs ?? 100_000);
   return { sim, texto: sim.tomarSerial(), resultado };

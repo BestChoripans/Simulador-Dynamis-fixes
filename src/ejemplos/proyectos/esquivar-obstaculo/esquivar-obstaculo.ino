@@ -17,7 +17,7 @@ const float KP = 0.03;                  // cuánto corrige por cada unidad de er
 // el límite tiene que ser menor que eso.
 const int DISTANCIA_PARA_ESQUIVAR = 35;   // mm
 const unsigned long RETROCESO = 150;      // ms hacia atrás para que las esquinas no toquen el obstáculo al girar
-const unsigned long GIRO_90 = 420;        // ms girando sobre su eje para girar unos 90°
+const unsigned long GIRO_90 = 480;        // ms girando sobre su eje para girar unos 90°
 const unsigned long APARTARSE = 570;      // ms avanzando para apartarse unos 20 cm
 const unsigned long ARCO_MINIMO = 900;    // ms de arco antes de buscar la línea otra vez
 const unsigned long AL_CENTRO = 390;      // ms para llevar las ruedas sobre la línea
@@ -72,7 +72,7 @@ void esquivar() {
   delay(GIRO_90);
   motores(150, 150);           // se aparta del obstáculo
   delay(APARTARSE);
-  motores(90, 160);            // arco hacia la izquierda: la rueda derecha va más rápido
+  motores(80, 170);            // arco hacia la izquierda: la rueda derecha va más rápido
   unsigned long inicio = millis();
   while (millis() - inicio < ARCO_MINIMO || !veLineaAlCentro()) delay(1);
   motores(VELOCIDAD, VELOCIDAD);

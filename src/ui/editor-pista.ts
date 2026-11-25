@@ -8,6 +8,7 @@ import {
   quitarObjeto, redimensionar, vaciarCelda,
 } from '../pista/edicion';
 import { celdaDe } from '../pista/baldosas';
+import { celdasEntre, rotacionAutomatica, trazarCamino, type EstiloCurva } from '../pista/trazado';
 import { revisarPista } from '../pista/revision';
 import { gradosARadianes, pistaVacia } from '../pista/serializacion';
 import { TAMANO_BALDOSA as T, type Baldosa, type ObjetoDePista, type Pista } from '../pista/tipos';
@@ -41,6 +42,15 @@ const RADIO_INICIO_MM = 60;
 const MARGEN_MM = 15;
 /** Moverse menos que esto (px) es un clic, no un arrastre. */
 const UMBRAL_ARRASTRE_PX = 4;
+/** Cuántos cambios se pueden deshacer. */
+const MAXIMO_HISTORIAL = 100;
+type Modo = 'elegir' | 'pieza' | 'lapiz' | 'goma';
+const AYUDA: Record<Modo, string> = {
+  elegir: 'Haz clic en una baldosa u objeto para ver sus propiedades; arrastra objetos y el inicio para moverlos; doble clic gira una baldosa.',
+  pieza: 'Haz clic en la grilla para poner la pieza: se gira sola para unirse a la línea. R la gira, Esc vuelve a Elegir.',
+  lapiz: 'Arrastra por la grilla: la línea pone rectas, curvas, uniones en T y cruces sola. Pasar sobre otra línea hace un cruce.',
+  goma: 'Arrastra sobre las baldosas y objetos que quieras borrar. Ctrl+Z los recupera.',
+};
 
 const centroDeCelda = ({ c, r }: Celda): Punto => ({ x: (c + 0.5) * T, y: (r + 0.5) * T });
 const centroInicio = (p: Pista): Punto => {
@@ -93,6 +103,12 @@ export function crearEditorPista(raiz: Document, eventos: { alCambiar(p: Pista):
   const canvas = $<HTMLCanvasElement>('lienzo-editor');
   const ctx = canvas.getContext('2d')!;
   const chip = $('chip-herr');
+  const botonLapiz = $<HTMLButtonElement>('btn-lapiz');
+  const botonGoma = $<HTMLButtonElement>('btn-goma');
+  const botonDeshacer = $<HTMLButtonElement>('btn-deshacer');
+  const botonRehacer = $<HTMLButtonElement>('btn-rehacer');
+  const selectorCurva = $<HTMLSelectElement>('estilo-curva');
+  const ayuda = $('ayuda-herr');
   const chipTamano = $('chip-tamano');
   const botonElegir = $('btn-elegir');
   const inputNombre = $<HTMLInputElement>('pista-nombre');
@@ -104,6 +120,11 @@ export function crearEditorPista(raiz: Document, eventos: { alCambiar(p: Pista):
   let celdasConAvisos: Celda[] = [];
   let sel: Seleccion | null = null;
   let herramienta: Pieza | null = null;
+  let modo: Modo = 'elegir';
+  const deshacer: Pista[] = [];
+  const rehacer: Pista[] = [];
+  /** Un trazo del lápiz o de la goma en curso: la pista de antes y las celdas recorridas. */
+  let trazo: { base: Pista; camino: Celda[]; borrar: boolean } | null = null;
   let cursor: Celda | null = null;
   let foco: Celda = { c: 0, r: 0 };
   let conTeclado = false;
@@ -136,13 +157,46 @@ export function crearEditorPista(raiz: Document, eventos: { alCambiar(p: Pista):
     $('paleta-baldosas').append(titulo, piezas);
   }
   botonElegir.addEventListener('click', () => usar(null));
+  botonLapiz.addEventListener('click', () => usarModo('lapiz'));
+  botonGoma.addEventListener('click', () => usarModo('goma'));
+  $('btn-girar').addEventListener('click', () => girarElegido(1));
+  botonDeshacer.addEventListener('click', () => moverEnHistorial(deshacer, rehacer));
+  botonRehacer.addEventListener('click', () => moverEnHistorial(rehacer, deshacer));
+  const estilo = (): EstiloCurva => (selectorCurva.value === 'giroL' ? 'giroL' : 'giroSuave');
 
-  const usar = (pieza: Pieza | null) => {
-    herramienta = pieza;
-    for (const [p, b] of botones) b.setAttribute('aria-pressed', String(p === pieza));
-    botonElegir.setAttribute('aria-pressed', String(pieza === null));
-    chip.textContent = pieza ? `Pieza: ${pieza.nombre}` : 'Elegir';
+  const usarModo = (m: Modo, pieza: Pieza | null = null) => {
+    modo = m;
+    herramienta = m === 'pieza' ? pieza : null;
+    for (const [p, b] of botones) b.setAttribute('aria-pressed', String(p === herramienta));
+    botonElegir.setAttribute('aria-pressed', String(m === 'elegir'));
+    botonLapiz.setAttribute('aria-pressed', String(m === 'lapiz'));
+    botonGoma.setAttribute('aria-pressed', String(m === 'goma'));
+    chip.textContent = m === 'pieza' && pieza ? `Pieza: ${pieza.nombre}` : m === 'lapiz' ? 'Dibujar línea' : m === 'goma' ? 'Borrar' : 'Elegir';
+    ayuda.textContent = AYUDA[m];
+    canvas.style.cursor = m === 'lapiz' ? 'crosshair' : m === 'goma' ? 'cell' : '';
     pedirDibujo();
+  };
+  const usar = (pieza: Pieza | null) => usarModo(pieza ? 'pieza' : 'elegir', pieza);
+
+  /** Guarda la pista de antes de un cambio para poder deshacerlo. */
+  const recordar = (antes: Pista) => {
+    deshacer.push(antes);
+    if (deshacer.length > MAXIMO_HISTORIAL) deshacer.shift();
+    rehacer.length = 0;
+    botonesHistorial();
+  };
+  const botonesHistorial = () => {
+    botonDeshacer.disabled = deshacer.length === 0;
+    botonRehacer.disabled = rehacer.length === 0;
+  };
+  const moverEnHistorial = (desde: Pista[], hacia: Pista[]) => {
+    const p = desde.pop();
+    if (!p) return;
+    hacia.push(pista);
+    cambiar(p);
+    eventos.alCambiar(p);
+    if (!seleccionValida(sel)) elegir(null);
+    botonesHistorial();
   };
 
   const dentro = ({ c, r }: Celda) => c >= 0 && r >= 0 && c < pista.columnas && r < pista.filas;
@@ -152,9 +206,13 @@ export function crearEditorPista(raiz: Document, eventos: { alCambiar(p: Pista):
     if (canvas.width > 0) vista = vistaInicial(canvas.width, canvas.height, pista.columnas, pista.filas);
   };
 
+  /** La rotación de una pieza nueva: la que mejor se une a la línea de las vecinas. */
+  const rotacionPieza = (k: Celda, tipo: Baldosa['tipo'], props: Record<string, unknown> = {}) =>
+    rotacionAutomatica(pista, k.c, k.r, tipo, props, baldosaEn(pista, k.c, k.r)?.rot ?? 0);
+
   const fantasma = (): Baldosa | null => {
     if (!cursor || herramienta?.clase !== 'baldosa' || !dentro(cursor)) return null;
-    const rot = baldosaEn(pista, cursor.c, cursor.r)?.rot ?? 0;
+    const rot = rotacionPieza(cursor, herramienta.tipo, herramienta.props);
     return baldosaEn(colocarBaldosa(pista, cursor.c, cursor.r, herramienta.tipo, rot, herramienta.props), cursor.c, cursor.r);
   };
 
@@ -205,6 +263,8 @@ export function crearEditorPista(raiz: Document, eventos: { alCambiar(p: Pista):
   };
 
   const editar = (p: Pista) => {
+    if (p === pista) return;
+    recordar(pista);
     cambiar(p);
     eventos.alCambiar(p);
   };
@@ -220,7 +280,7 @@ export function crearEditorPista(raiz: Document, eventos: { alCambiar(p: Pista):
       return;
     }
     if (herramienta?.clase === 'baldosa') {
-      const rot = baldosaEn(pista, celda.c, celda.r)?.rot ?? 0;
+      const rot = rotacionPieza(celda, herramienta.tipo, herramienta.props);
       editar(colocarBaldosa(pista, celda.c, celda.r, herramienta.tipo, rot, herramienta.props));
       elegir({ clase: 'baldosa', ...celda });
     } else if (herramienta?.clase === 'objeto') {
@@ -284,11 +344,34 @@ export function crearEditorPista(raiz: Document, eventos: { alCambiar(p: Pista):
   };
 
   canvas.tabIndex = 0;
+  /** Borra en un punto: el objeto que haya ahí o, si no, la baldosa. */
+  const borrarEn = (p: Pista, punto: Punto): Pista => {
+    const algo = loQueHayEn(p, punto.x, punto.y);
+    if (algo?.clase === 'objeto') return quitarObjeto(p, algo.indice);
+    const k = celdaDe(punto.x, punto.y);
+    return baldosaEn(p, k.c, k.r) ? vaciarCelda(p, k.c, k.r) : p;
+  };
+  canvas.addEventListener('contextmenu', e => e.preventDefault());
   canvas.addEventListener('pointerdown', e => {
-    if (e.button !== 0 || vista.escala === 0) return;
+    if (vista.escala === 0) return;
+    const punto = puntoDelEvento(e);
+    const celda = celdaDe(punto.x, punto.y);
+    // Lápiz y goma (y el clic derecho, que siempre borra): un trazo que se confirma al soltar.
+    if (e.button === 2 || (e.button === 0 && (modo === 'lapiz' || modo === 'goma'))) {
+      confirmarCampo();
+      conTeclado = false;
+      const borrar = e.button === 2 || modo === 'goma';
+      trazo = { base: pista, camino: [celda], borrar };
+      if (borrar) {
+        cambiar(borrarEn(pista, punto));
+        if (sel && !seleccionValida(sel)) elegir(null);
+      }
+      canvas.setPointerCapture(e.pointerId);
+      return;
+    }
+    if (e.button !== 0) return;
     confirmarCampo();
     conTeclado = false;
-    const punto = puntoDelEvento(e);
     const tomado = herramienta ? null : loQueHayEn(pista, punto.x, punto.y);
     aplicar(punto);
     if (!tomado) return;
@@ -299,6 +382,19 @@ export function crearEditorPista(raiz: Document, eventos: { alCambiar(p: Pista):
   canvas.addEventListener('pointermove', e => {
     if (vista.escala === 0) return;
     const punto = puntoDelEvento(e);
+    if (trazo) {
+      const celda = celdaDe(punto.x, punto.y);
+      const ultima = trazo.camino.at(-1)!;
+      if (trazo.borrar) {
+        cambiar(borrarEn(pista, punto));
+        if (sel && !seleccionValida(sel)) elegir(null);
+      } else if (ultima.c !== celda.c || ultima.r !== celda.r) {
+        trazo.camino.push(...celdasEntre(ultima, celda));
+        cambiar(trazarCamino(trazo.base, trazo.camino, estilo()));
+      }
+      cursor = celda;
+      return;
+    }
     if (arrastre) {
       arrastre.movido ||= Math.hypot(e.clientX - arrastre.inicioPx.x, e.clientY - arrastre.inicioPx.y) >= UMBRAL_ARRASTRE_PX;
       if (!arrastre.movido) return;
@@ -314,11 +410,31 @@ export function crearEditorPista(raiz: Document, eventos: { alCambiar(p: Pista):
     pedirDibujo();
   });
   const soltar = () => {
+    if (trazo) {
+      const { base } = trazo;
+      trazo = null;
+      if (pista !== base) {
+        recordar(base);
+        eventos.alCambiar(pista);
+      }
+      return;
+    }
     if (!arrastre) return;
-    const movido = arrastre.movido;
+    const { movido, base } = arrastre;
     arrastre = null;
-    if (movido) eventos.alCambiar(pista);
+    if (movido) {
+      recordar(base);
+      eventos.alCambiar(pista);
+    }
   };
+  // Doble clic con Elegir: gira la baldosa.
+  canvas.addEventListener('dblclick', e => {
+    if (modo !== 'elegir' || vista.escala === 0) return;
+    const punto = puntoDelEvento(e);
+    if (loQueHayEn(pista, punto.x, punto.y)) return;
+    const k = celdaDe(punto.x, punto.y);
+    if (baldosaEn(pista, k.c, k.r)) editar(girarBaldosa(pista, k.c, k.r, 1));
+  });
   canvas.addEventListener('pointerup', soltar);
   canvas.addEventListener('pointercancel', soltar);
   canvas.addEventListener('pointerleave', () => {
@@ -346,7 +462,23 @@ export function crearEditorPista(raiz: Document, eventos: { alCambiar(p: Pista):
       quitarElegido();
     } else if (e.key === 'Escape') {
       usar(null);
+    } else if (e.key === 'd' || e.key === 'D') {
+      usarModo('lapiz');
+    } else if (e.key === 'b' || e.key === 'B') {
+      usarModo('goma');
     } else return;
+    e.preventDefault();
+  });
+
+  // Ctrl+Z / Ctrl+Y (o Ctrl+Mayús+Z) en la vista Construir pista, salvo dentro de un campo de texto.
+  $('vista-pista').addEventListener('keydown', e => {
+    if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
+    const t = e.target as HTMLElement;
+    if (t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement || t instanceof HTMLSelectElement) return;
+    const tecla = e.key.toLowerCase();
+    if (tecla === 'z' && !e.shiftKey) moverEnHistorial(deshacer, rehacer);
+    else if (tecla === 'y' || (tecla === 'z' && e.shiftKey)) moverEnHistorial(rehacer, deshacer);
+    else return;
     e.preventDefault();
   });
 
@@ -396,6 +528,8 @@ export function crearEditorPista(raiz: Document, eventos: { alCambiar(p: Pista):
   usar(null);
   return {
     mostrar(p) {
+      // Abrir otra pista también se puede deshacer (salvo la primera vez, con la pista vacía).
+      if (pista.baldosas.length > 0 || pista.objetos.length > 0) recordar(pista);
       cambiar(p);
       ajustarVista();
       foco = { c: 0, r: 0 };

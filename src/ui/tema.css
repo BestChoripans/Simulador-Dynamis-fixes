@@ -568,3 +568,29 @@ button:disabled { opacity: .55; cursor: not-allowed; }
 #btn-boton[aria-pressed="true"] .centro { fill: currentColor; }
 .pin-boton { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; color: var(--tinta-suave); font-weight: 600; }
 .pin-boton input { width: 3.6em; border: 2px solid var(--hielo); background: var(--blanco); color: var(--tinta); border-radius: 10px; padding: 5px 6px; font: inherit; font-variant-numeric: tabular-nums; }
+
+/* ===== Vista 2D / 3D ===== */
+.vista-modo span { padding: 3px 12px; font-size: 13px; }
+.caja-3d { position: relative; }
+.caja-3d canvas.lienzo-3d { display: block; width: 100%; height: auto; aspect-ratio: 4 / 3; border-radius: 14px; touch-action: none; cursor: grab; }
+.caja-3d canvas.lienzo-3d:active { cursor: grabbing; }
+.camaras-3d { position: absolute; top: 20px; left: 20px; display: flex; gap: 4px; flex-wrap: wrap; padding: 4px; border-radius: 999px; background: color-mix(in srgb, var(--blanco) 85%, transparent); box-shadow: 0 2px 10px rgba(0, 0, 0, .15); backdrop-filter: blur(4px); }
+.btn-camara { border: 0; background: transparent; color: var(--tinta-suave); font-size: 12.5px; font-weight: 600; padding: 5px 10px; border-radius: 999px; display: inline-flex; align-items: center; gap: 5px; }
+.btn-camara svg.ico { width: 15px; height: 15px; }
+.btn-camara:hover { color: var(--azul); }
+.btn-camara[aria-pressed="true"] { background: var(--azul); color: var(--blanco); }
+.cargando-3d { position: absolute; inset: 12px; display: grid; place-items: center; margin: 0; border-radius: 14px; background: var(--hielo); color: var(--tinta-suave); font-weight: 600; }
+
+/* ===== Herramientas del editor de pista ===== */
+.herramientas { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; padding: 10px 16px 0; }
+.herr { border: 2px solid var(--hielo); background: var(--blanco); color: var(--tinta); font-size: 13px; font-weight: 600; padding: 6px 12px; border-radius: 12px; display: inline-flex; align-items: center; gap: 6px; }
+.herr svg.ico { width: 17px; height: 17px; color: var(--azul); }
+.herr:hover:not(:disabled) { border-color: var(--celeste); }
+.herr[aria-pressed="true"] { background: var(--azul); border-color: var(--azul); color: var(--blanco); }
+.herr[aria-pressed="true"] svg.ico { color: var(--blanco); }
+.herramientas .separador { width: 2px; align-self: stretch; background: var(--hielo); margin: 2px 4px; }
+.herramientas .chip { margin-left: auto; }
+.estilo-curva { display: inline-flex; align-items: center; gap: 4px; font-size: 12.5px; color: var(--tinta-suave); font-weight: 600; }
+.estilo-curva select { border: 2px solid var(--hielo); border-radius: 10px; padding: 4px 6px; background: var(--blanco); color: var(--tinta); font: inherit; }
+.ayuda-herr { margin: 6px 16px 0; font-size: 12.5px; color: var(--tinta-suave); min-height: 1.4em; }
+@media (max-width: 640px) { .herr { padding: 6px 8px; } .herramientas .chip { display: none; } }

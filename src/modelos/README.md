@@ -33,8 +33,13 @@ export function pasoDinamica(estado, motores, dt, mundo, robot, azar) → nuevo 
 | `robot` | Configuración del robot (medidas, montaje de sensores, pines). Ver `src/robot/config.ts`. `huellaRobot(x, y, yaw, robot)` da el contorno del chasis. |
 | `azar` | `() => número en [0, 1)` con la semilla de la ejecución. |
 
-**El placeholder actual:**
-- cinemática diferencial ideal con `robot.motores.vMaxMmS` (la velocidad de cada rueda con duty = 1, que se edita en «Mi robot»);
+**El modelo actual** (las constantes están en `parametros.js`, estimadas para el Dynamis: conviene medirlas):
+- un cuerpo rígido con masa e inercia, sobre dos ruedas motrices. Cada motor DC tiene su curva torque–velocidad: empuja con `fuerzaArranque` con la rueda detenida y no empuja a la velocidad sin carga, que se calcula para que el robot llegue a `robot.motores.vMaxMmS` en lo plano (la velocidad máxima que se mide, en «Mi robot»). En `'freno'` el motor en corto frena en proporción a la velocidad; en `'libre'` solo queda el roce de la caja;
+- el suelo empuja cada rueda hasta su límite de fricción (μ · N): si el motor pide más, la rueda patina (`patinaIzq`, `patinaDer`). De lado, las ruedas no deslizan hasta el mismo límite;
+- la gravedad, con la inclinación del cuerpo del robot: tira cuesta abajo en las rampas, reparte el peso entre ruedas motrices y locas, y frena con la resistencia a la rodadura;
+- cada motor sale hasta `diferenciaMotores` más fuerte o más débil que lo nominal (sorteado con el `azar`, así una prueba se repite igual);
+- el estado agrega `v`, `vLat` y `w` (velocidades del cuerpo), `ruedaIzq` y `ruedaDer` (velocidad del borde de cada rueda) y `choque`;
+- `dinamica-ideal.js` guarda el modelo ideal anterior (cinemática diferencial sin inercia): lo usan las pruebas que necesitan un movimiento exacto;
 - `z`, `pitch` y `roll` salen de `mundo.altura`. El pitch: si el robot tiene ruedas locas (`robot.ruedasLocas.instalado`), con la altura bajo el eje de las ruedas motrices (`ruedas.x`) y bajo el de las locas (`ruedasLocas.x`), así que se inclina cuando las locas llegan a la rampa; sin ruedas locas, con la altura bajo el frente y la cola del chasis. El roll, con la altura bajo cada rueda motriz. Un bache de 6 mm lo inclina apenas unos grados;
 - si el robot choca, no avanza.
 

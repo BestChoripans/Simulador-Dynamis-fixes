@@ -28,7 +28,7 @@ void setup() {
 
   Serial.println("Giro a la izquierda");
   motores(-120, 120);      // una rueda atrás y la otra adelante: gira sobre su eje
-  delay(350);
+  delay(420);
 
   Serial.println("Atrás");
   motores(-150, -150);     // los dos hacia atrás

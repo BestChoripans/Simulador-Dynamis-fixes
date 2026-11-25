@@ -15,7 +15,19 @@ subirlo al robot físico.
   el Arduino IDE con que se sube el programa al robot.
 - **Construir pista:** las piezas de las bases (líneas, cortes, cruces con marcas, rampas, F1 y F2,
   partida y meta, obstáculos, baches e hitos), sus propiedades, una revisión según las bases, y
-  guardar o abrir la pista como `.json`.
+  guardar o abrir la pista como `.json`. **«Dibujar línea»**: se arrastra por la grilla y pone
+  rectas, curvas (suaves o en L), uniones en T y cruces con la rotación justa. Las piezas de la
+  paleta se giran solas para unirse a la línea. **Borrar** arrastrando (o con clic derecho),
+  **deshacer y rehacer** (Ctrl+Z / Ctrl+Y) y doble clic para girar una baldosa.
+- **Vista 3D:** el interruptor 2D / 3D de la pista (en Programar y en Construir pista) muestra la
+  pista con su relieve (rampas, plataformas, baches y obstáculos) y el robot con sus ruedas, los LEDs
+  del sensor de línea, el color de los TCS34725 y el rayo del láser. Cámaras: libre (arrastrar para
+  girar, rueda para acercar, clic derecho para mover), seguir al robot, desde el robot y desde arriba.
+  Three.js se descarga recién la primera vez que se abre el 3D.
+- **Física realista:** el robot tiene masa e inercia, motores con su curva torque–velocidad (y
+  freno en corto), fricción con el suelo (las ruedas patinan si se les pide demasiado), gravedad en
+  las rampas y choques. Acelera y frena en un tiempo, sube más lento las rampas y cada motor sale un
+  poco distinto del otro, como en el robot real.
 - **Mi robot:** las medidas, la posición de los sensores y los pines del robot, con un dibujo y
   avisos. Se exporta e importa como `robot.json`.
 - **Ajustar parámetros:** prueba muchas veces los valores marcados con `@ajustar` en el código, con
@@ -28,7 +40,8 @@ subirlo al robot físico.
   mientras está apretado, `digitalRead(pin)` lee 1 (o 0 si el pin usa `INPUT_PULLUP`).
 - **Modo oscuro:** el botón de la banda cambia entre claro y oscuro; si no se elige, sigue al sistema.
 - **Ejemplos:** proyectos para cada sensor (motores, línea, seguidores, cortes, marcas de color,
-  rampa, obstáculo y giroscopio) y tres pistas.
+  rampa, obstáculo, giroscopio y control por Bluetooth) y cuatro pistas (con la de la mesa del
+  taller, «Pista CarlosBot»).
 - **Ayuda:** una guía de cada sensor con un programa para copiar, las conexiones del robot, cómo se
   puntúa según las bases y un recorrido para la primera visita.
 - **Funciona en el navegador:** se publica en GitHub Pages, se puede instalar y funciona sin
@@ -89,7 +102,9 @@ contrato está en [`src/ajuste/README.md`](src/ajuste/README.md).
 ## Modelos de los sensores y del robot
 
 La dinámica del robot y la lectura de cada sensor están en [`src/modelos/`](src/modelos/README.md).
-Hoy son aproximaciones ideales, marcadas con `TODO(profe)`. Se pueden reemplazar sin cambiar el
+La dinámica es un modelo físico (masa, inercia, motores DC, fricción y gravedad) con constantes
+estimadas en `src/modelos/parametros.js`, que conviene medir en el robot real. Los sensores son
+aproximaciones ideales, marcadas con `TODO(profe)`. Se pueden reemplazar sin cambiar el
 resto del simulador; ese README explica las firmas, las unidades y los marcos de referencia.
 
 ## Desarrollo

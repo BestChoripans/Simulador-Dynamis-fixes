@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { correrSketch } from '../ayuda/correr-sketch';
+import { correrSketch as correrSketchReal, type OpcionesSketch } from '../ayuda/correr-sketch';
+import * as dinamicaIdeal from '../../src/modelos/dinamica-ideal.js';
+import type { ModeloDinamica } from '../../src/simulacion/simulador';
+/** Estas pruebas miden los sensores y el reloj: necesitan el movimiento exacto del modelo ideal. */
+const IDEAL = dinamicaIdeal as unknown as ModeloDinamica;
+const correrSketch = (codigo: string, o: OpcionesSketch = {}) => correrSketchReal(codigo, { dinamica: IDEAL, ...o });
 import { pistaDe } from '../ayuda/pistas';
 import { ROBOT_POR_DEFECTO } from '../../src/robot/config';
 

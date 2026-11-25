@@ -4,13 +4,17 @@ import { cargarNucleoDesdeDisco } from '../../src/compilador/nucleo-node';
 import { Simulador, type OpcionesSimulador } from '../../src/simulacion/simulador';
 import type { ArchivosNucleo } from '../../src/compilador/compilar';
 import { ROBOT_POR_DEFECTO } from '../../src/robot/config';
+import * as dinamicaIdeal from '../../src/modelos/dinamica-ideal.js';
+import type { ModeloDinamica } from '../../src/simulacion/simulador';
+/** Estas pruebas miden los sensores y el reloj: necesitan el movimiento exacto del modelo ideal. */
+const IDEAL = dinamicaIdeal as unknown as ModeloDinamica;
 
 let nucleo: ArchivosNucleo;
 beforeAll(async () => { nucleo = await cargarNucleoDesdeDisco(); });
 
 async function crearSim(codigo: string, opciones: Partial<OpcionesSimulador> = {}): Promise<Simulador> {
   const modulo = await compilarParaPrueba({ 'p.ino': codigo }, nucleo, 'p');
-  return Simulador.crear({ modulo, ...opciones });
+  return Simulador.crear({ modulo, dinamica: IDEAL, ...opciones });
 }
 
 const AVANZAR = `void setup() {
