@@ -19,10 +19,11 @@ export function estadoInicial(pose, robot, mundo) {
  * cola del chasis. Así el robot empieza a subir cuando su apoyo delantero llega a la rampa, y un
  * bache chico lo inclina poco.
  */
-function apoyo(x, y, yaw, robot, mundo) {
+function apoyo(x, y, yaw, robot, mundo, zAnterior) {
   const c = Math.cos(yaw);
   const s = Math.sin(yaw);
-  const suelo = (adelante, izquierda) => mundo.altura(x + adelante * c - izquierda * s, y + adelante * s + izquierda * c);
+  // Con la altura de antes: debajo de un puente, el robot sigue en el suelo (no sube a la tabla).
+  const suelo = (adelante, izquierda) => mundo.altura(x + adelante * c - izquierda * s, y + adelante * s + izquierda * c, zAnterior);
   const locas = robot.ruedasLocas;
   const conLocas = locas?.instalado && locas.x !== robot.ruedas.x;
   const delante = conLocas ? locas.x : robot.chasis.xDelantero;
@@ -53,9 +54,9 @@ export function pasoDinamica(estado, motores, dt, mundo, robot, azar) {
   const yaw = estado.yaw + w * dt;
   let x = estado.x + v * Math.cos(yaw) * dt;
   let y = estado.y + v * Math.sin(yaw) * dt;
-  if (mundo.colisiona(huellaRobot(x, y, yaw, robot))) {
+  if (mundo.colisiona(huellaRobot(x, y, yaw, robot), estado.z, robot.chasis.alto)) {
     x = estado.x;
     y = estado.y;
   }
-  return { ...estado, x, y, yaw, ...apoyo(x, y, yaw, robot, mundo), v, w };
+  return { ...estado, x, y, yaw, ...apoyo(x, y, yaw, robot, mundo, estado.z), v, w };
 }

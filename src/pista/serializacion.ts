@@ -61,10 +61,10 @@ function propsDeBaldosa(tipo: TipoBaldosa, props: Registro, donde: string, error
   }
 }
 
-function normalizarBaldosas(datos: unknown, columnas: number | null, filas: number | null, errores: string[]): Baldosa[] {
+function normalizarBaldosas(datos: unknown, columnas: number | null, filas: number | null, errores: string[], campo = 'baldosas'): Baldosa[] {
   if (datos === undefined) return [];
   if (!Array.isArray(datos)) {
-    errores.push('"baldosas" debe ser una lista.');
+    errores.push(`"${campo}" debe ser una lista.`);
     return [];
   }
   const baldosas: Baldosa[] = [];
@@ -76,7 +76,7 @@ function normalizarBaldosas(datos: unknown, columnas: number | null, filas: numb
     }
     const c = b.c as number;
     const r = b.r as number;
-    const donde = `La baldosa en (${c}, ${r})`;
+    const donde = campo === 'baldosas' ? `La baldosa en (${c}, ${r})` : `La baldosa de debajo en (${c}, ${r})`;
     if (!TIPOS_BALDOSA.includes(b.tipo as TipoBaldosa)) {
       errores.push(`${donde} tiene un tipo desconocido: ${JSON.stringify(b.tipo)}.`);
       return;
@@ -178,6 +178,7 @@ export function normalizarPista(datos: unknown): ResultadoLectura {
   }
 
   const baldosas = normalizarBaldosas(datos.baldosas, columnas, filas, errores);
+  const debajo = normalizarBaldosas(datos.debajo, columnas, filas, errores, 'debajo').map(b => ({ ...b, nivel: 0 }) as Baldosa);
   const objetos = normalizarObjetos(datos.objetos, errores);
   if (errores.length > 0) return { ok: false, errores };
 
@@ -193,6 +194,7 @@ export function normalizarPista(datos: unknown): ResultadoLectura {
     inicio: { x: (inicio as Registro).x as number, y: (inicio as Registro).y as number, yaw: ((inicio as Registro).yaw ?? 0) as number },
   };
   if (datos.colorMarcas !== undefined) pista.colorMarcas = datos.colorMarcas as string;
+  if (debajo.length > 0) pista.debajo = debajo;
   return { ok: true, pista };
 }
 

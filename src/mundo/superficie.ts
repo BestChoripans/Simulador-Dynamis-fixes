@@ -1,14 +1,15 @@
-import { aLocal, celdaDe, crearIndice } from '../pista/baldosas';
+import { aLocal } from '../pista/baldosas';
+import { crearCapas } from '../pista/capas';
 import { figurasDe, type Figura } from '../pista/catalogo';
 import { COLOR_CINTA, COLOR_FONDO, type Baldosa, type Pista } from '../pista/tipos';
 
 export interface Rgb { r: number; g: number; b: number }
 
 export interface Superficie {
-  /** Color 0–255 del suelo en (x, y). */
-  color(x: number, y: number): Rgb;
+  /** Color 0–255 del suelo en (x, y); z: la altura de quien mira (debajo de un puente, el suelo). */
+  color(x: number, y: number, z?: number): Rgb;
   /** true si (x, y) cae sobre la cinta de la línea (negra, o blanca en una baldosa invertida). */
-  esLinea(x: number, y: number): boolean;
+  esLinea(x: number, y: number, z?: number): boolean;
 }
 
 export function hexARgb(hex: string): Rgb {
@@ -40,8 +41,8 @@ export function colorVisible(b: Baldosa, f: Figura | null): string {
  * Fuera de la grilla y en celdas sin baldosa hay fondo blanco.
  */
 export function crearSuperficie(p: Pista): Superficie {
-  const indice = crearIndice(p);
-  const figuras = new Map<Baldosa, Figura[]>(p.baldosas.map(b => [b, figurasDe(b, p.colorMarcas)]));
+  const capas = crearCapas(p);
+  const figuras = new Map<Baldosa, Figura[]>([...p.baldosas, ...(p.debajo ?? [])].map(b => [b, figurasDe(b, p.colorMarcas)]));
   const fondo = hexARgb(COLOR_FONDO);
   const colores = new Map<string, Rgb>();
   const colorDe = (hex: string) => {
@@ -51,9 +52,8 @@ export function crearSuperficie(p: Pista): Superficie {
   };
 
   /** La baldosa bajo (x, y) y la figura visible en ese punto (null = fondo de la baldosa). */
-  const consultar = (x: number, y: number): { baldosa: Baldosa; figura: Figura | null } | null => {
-    const { c, r } = celdaDe(x, y);
-    const baldosa = indice(c, r);
+  const consultar = (x: number, y: number, z?: number): { baldosa: Baldosa; figura: Figura | null } | null => {
+    const { baldosa } = capas.piso(x, y, z);
     if (!baldosa) return null;
     const { u, v } = aLocal(baldosa, x, y);
     const lista = figuras.get(baldosa)!;
@@ -62,13 +62,13 @@ export function crearSuperficie(p: Pista): Superficie {
   };
 
   return {
-    color(x, y) {
-      const q = consultar(x, y);
+    color(x, y, z) {
+      const q = consultar(x, y, z);
       if (!q) return { ...fondo };
       return { ...colorDe(colorVisible(q.baldosa, q.figura)) };
     },
-    esLinea(x, y) {
-      return consultar(x, y)?.figura?.rol === 'linea';
+    esLinea(x, y, z) {
+      return consultar(x, y, z)?.figura?.rol === 'linea';
     },
   };
 }

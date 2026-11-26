@@ -79,6 +79,9 @@ function cuadrado(c: number, r: number): Punto2[] {
   return [{ x, y }, { x: x + TAMANO_BALDOSA, y }, { x: x + TAMANO_BALDOSA, y: y + TAMANO_BALDOSA }, { x, y: y + TAMANO_BALDOSA }];
 }
 
+/** La altura del robot si la pose la trae (el estado del simulador): debajo de un puente se juzga el suelo. */
+const alturaDe = (pose: Pose): number | undefined => (pose as Pose & { z?: number }).z;
+
 export class Juez {
   private readonly puntos: PuntoDePartida[];
   private readonly hitos: Hito[];
@@ -250,7 +253,7 @@ export class Juez {
     const s = Math.sin(pose.yaw);
     for (let lx = xDelantero - largo; lx <= xDelantero; lx += PASO_HUELLA_MM) {
       for (let ly = -ancho / 2; ly <= ancho / 2; ly += PASO_HUELLA_MM) {
-        if (this.mundo.esLinea(pose.x + lx * c - ly * s, pose.y + lx * s + ly * c)) return true;
+        if (this.mundo.esLinea(pose.x + lx * c - ly * s, pose.y + lx * s + ly * c, alturaDe(pose))) return true;
       }
     }
     return false;
@@ -280,7 +283,7 @@ export class Juez {
 
   /** Cruces y uniones en T: según las marcas vistas desde la entrada. Cuadrado F1: solo entrando por la flecha. */
   private revisarDecisiones(pose: Pose): void {
-    const baldosa = this.mundo.baldosaEn(pose.x, pose.y);
+    const baldosa = this.mundo.baldosaEn(pose.x, pose.y, alturaDe(pose));
     if (baldosa !== this.baldosaActual) {
       const anterior = this.baldosaActual;
       if (anterior && (anterior.tipo === 'cruce' || anterior.tipo === 'unionT') && this.entrada) {

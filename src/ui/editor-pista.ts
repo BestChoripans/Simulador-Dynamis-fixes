@@ -8,6 +8,7 @@ import {
   quitarObjeto, redimensionar, vaciarCelda,
 } from '../pista/edicion';
 import { celdaDe } from '../pista/baldosas';
+import { capaSuelo, conCapaSuelo, esElevada } from '../pista/capas';
 import { celdasEntre, rotacionAutomatica, trazarCamino, type EstiloCurva } from '../pista/trazado';
 import { revisarPista } from '../pista/revision';
 import { gradosARadianes, pistaVacia } from '../pista/serializacion';
@@ -15,12 +16,35 @@ import { TAMANO_BALDOSA as T, type Baldosa, type ObjetoDePista, type Pista } fro
 
 export type Seleccion = { clase: 'baldosa'; c: number; r: number } | { clase: 'objeto'; indice: number } | { clase: 'inicio' };
 
+/**
+ * Lo que se hace con el puntero sobre la pista, en mm del mundo: lo usa el lienzo 2D y también la
+ * vista 3D (que convierte el puntero en un punto de la pista).
+ */
+export interface PunteroPista {
+  /** Botón apretado en un punto. true si lo tomó la herramienta (un trazo, una pieza o un arrastre). */
+  presionar(p: Punto, boton: number, px: Punto): boolean;
+  /** El puntero se movió (null: fuera de la pista). */
+  mover(p: Punto | null, px: Punto): void;
+  soltar(): void;
+  /** Un clic que no tomó la herramienta (en 3D, con Elegir): elige lo que hay ahí. */
+  clic(p: Punto): void;
+  dobleClic(p: Punto): void;
+  /** true con el lápiz, la goma o una pieza: el clic izquierdo edita en vez de girar la cámara. */
+  herramientaActiva(): boolean;
+}
+
 export interface EditorPista {
   /** Muestra otra pista (abierta o nueva) sin avisar un cambio. */
   mostrar(p: Pista): void;
   /** Aplica un cambio hecho fuera del lienzo (el panel): conserva lo elegido si sigue existiendo y avisa el cambio. */
   editar(p: Pista): void;
+  /** La pista que se edita: con «Ver debajo de los puentes», solo el suelo. */
   pista(): Pista;
+  /** La pista entera, con los puentes y lo que pasa debajo. */
+  pistaCompleta(): Pista;
+  /** true mientras se edita el suelo debajo de los puentes. */
+  verDebajo(): boolean;
+  puntero: PunteroPista;
   seleccion(): Seleccion | null;
   elegir(sel: Seleccion | null): void;
   /** La pieza que se coloca con cada clic, o null con la herramienta Elegir. */
@@ -45,6 +69,7 @@ const UMBRAL_ARRASTRE_PX = 4;
 /** Cuántos cambios se pueden deshacer. */
 const MAXIMO_HISTORIAL = 100;
 type Modo = 'elegir' | 'pieza' | 'lapiz' | 'goma';
+const AYUDA_DEBAJO = ' Estás editando el suelo: los puentes se ven rayados encima.';
 const AYUDA: Record<Modo, string> = {
   elegir: 'Haz clic en una baldosa u objeto para ver sus propiedades; arrastra objetos y el inicio para moverlos; doble clic gira una baldosa.',
   pieza: 'Haz clic en la grilla para poner la pieza: se gira sola para unirse a la línea. R la gira, Esc vuelve a Elegir.',
@@ -98,7 +123,12 @@ function anilloDe(p: Pista, sel: Seleccion | null): MarcasEditor['anillo'] {
  * inicio. Con una baldosa, cada clic la coloca y la elige; con un objeto o el inicio, el clic lo
  * pone y vuelve a Elegir. Con el teclado: flechas, Enter, R (Mayús+R al revés), Supr y Esc.
  */
-export function crearEditorPista(raiz: Document, eventos: { alCambiar(p: Pista): void; alElegir(sel: Seleccion | null): void }): EditorPista {
+export function crearEditorPista(raiz: Document, eventos: {
+  alCambiar(p: Pista): void;
+  alElegir(sel: Seleccion | null): void;
+  /** Cada vez que cambia lo que se ve (también durante un trazo, antes de soltar): la pista entera. */
+  alVer?(p: Pista, verDebajo: boolean): void;
+}): EditorPista {
   const $ = <E extends HTMLElement>(id: string) => raiz.getElementById(id) as E;
   const canvas = $<HTMLCanvasElement>('lienzo-editor');
   const ctx = canvas.getContext('2d')!;
@@ -109,6 +139,7 @@ export function crearEditorPista(raiz: Document, eventos: { alCambiar(p: Pista):
   const botonRehacer = $<HTMLButtonElement>('btn-rehacer');
   const selectorCurva = $<HTMLSelectElement>('estilo-curva');
   const ayuda = $('ayuda-herr');
+  const botonDebajo = $<HTMLButtonElement>('btn-debajo');
   const chipTamano = $('chip-tamano');
   const botonElegir = $('btn-elegir');
   const inputNombre = $<HTMLInputElement>('pista-nombre');
@@ -116,7 +147,10 @@ export function crearEditorPista(raiz: Document, eventos: { alCambiar(p: Pista):
   const inputFilas = $<HTMLInputElement>('pista-filas');
   const dpr = () => window.devicePixelRatio || 1;
 
-  let pista: Pista = pistaVacia();
+  /** La pista entera; `pista` es lo que se edita (la misma, o solo el suelo con «Ver debajo»). */
+  let completa: Pista = pistaVacia();
+  let debajo = false;
+  let pista: Pista = completa;
   let celdasConAvisos: Celda[] = [];
   let sel: Seleccion | null = null;
   let herramienta: Pieza | null = null;
@@ -124,14 +158,14 @@ export function crearEditorPista(raiz: Document, eventos: { alCambiar(p: Pista):
   const deshacer: Pista[] = [];
   const rehacer: Pista[] = [];
   /** Un trazo del lápiz o de la goma en curso: la pista de antes y las celdas recorridas. */
-  let trazo: { base: Pista; camino: Celda[]; borrar: boolean } | null = null;
+  let trazo: { base: Pista; baseCompleta: Pista; camino: Celda[]; borrar: boolean } | null = null;
   let cursor: Celda | null = null;
   let foco: Celda = { c: 0, r: 0 };
   let conTeclado = false;
   let vista: Vista = { escala: 0, x0: 0, y0: 0 };
   let pendiente = false;
   /** Arrastre en curso: qué se mueve, desde qué pista y a qué distancia del puntero lo tomó. */
-  let arrastre: { que: Seleccion; base: Pista; desfase: Punto; inicioPx: Punto; movido: boolean } | null = null;
+  let arrastre: { que: Seleccion; base: Pista; baseCompleta: Pista; desfase: Punto; inicioPx: Punto; movido: boolean } | null = null;
 
   // La paleta: un botón por pieza, con su miniatura.
   const botones = new Map<Pieza, HTMLButtonElement>();
@@ -172,7 +206,7 @@ export function crearEditorPista(raiz: Document, eventos: { alCambiar(p: Pista):
     botonLapiz.setAttribute('aria-pressed', String(m === 'lapiz'));
     botonGoma.setAttribute('aria-pressed', String(m === 'goma'));
     chip.textContent = m === 'pieza' && pieza ? `Pieza: ${pieza.nombre}` : m === 'lapiz' ? 'Dibujar línea' : m === 'goma' ? 'Borrar' : 'Elegir';
-    ayuda.textContent = AYUDA[m];
+    ayuda.textContent = AYUDA[m] + (debajo ? AYUDA_DEBAJO : '');
     canvas.style.cursor = m === 'lapiz' ? 'crosshair' : m === 'goma' ? 'cell' : '';
     pedirDibujo();
   };
@@ -192,9 +226,9 @@ export function crearEditorPista(raiz: Document, eventos: { alCambiar(p: Pista):
   const moverEnHistorial = (desde: Pista[], hacia: Pista[]) => {
     const p = desde.pop();
     if (!p) return;
-    hacia.push(pista);
-    cambiar(p);
-    eventos.alCambiar(p);
+    hacia.push(completa);
+    cambiarCompleta(p);
+    eventos.alCambiar(completa);
     if (!seleccionValida(sel)) elegir(null);
     botonesHistorial();
   };
@@ -232,6 +266,8 @@ export function crearEditorPista(raiz: Document, eventos: { alCambiar(p: Pista):
       elegida: sel?.clase === 'baldosa' ? sel : null,
       anillo: anilloDe(pista, sel),
       foco: conTeclado && raiz.activeElement === canvas ? foco : null,
+      puentes: debajo ? completa.baldosas.filter(esElevada) : [],
+      conDebajo: debajo ? [] : (completa.debajo ?? []),
     };
     dibujarMarcasEditor(ctx, vista, marcas);
   };
@@ -241,10 +277,11 @@ export function crearEditorPista(raiz: Document, eventos: { alCambiar(p: Pista):
     requestAnimationFrame(dibujar);
   };
 
-  /** Muestra la pista (sin avisar): avisos, controles de nombre y tamaño, y la vista si cambió el tamaño. */
-  const cambiar = (p: Pista) => {
+  /** Muestra la pista entera (sin avisar): avisos, controles de nombre y tamaño, y la vista si cambió el tamaño. */
+  const cambiarCompleta = (p: Pista) => {
     const otroTamano = p.columnas !== pista.columnas || p.filas !== pista.filas;
-    pista = p;
+    completa = p;
+    pista = debajo ? capaSuelo(p) : p;
     celdasConAvisos = revisarPista(p).flatMap(a => a.baldosas ?? []);
     inputNombre.value = p.nombre;
     inputColumnas.value = String(p.columnas);
@@ -253,7 +290,25 @@ export function crearEditorPista(raiz: Document, eventos: { alCambiar(p: Pista):
     foco = { c: Math.min(foco.c, p.columnas - 1), r: Math.min(foco.r, p.filas - 1) };
     if (otroTamano) ajustarVista();
     pedirDibujo();
+    eventos.alVer?.(completa, debajo);
   };
+  /** Muestra lo editado (la pista entera, o solo el suelo con «Ver debajo»). */
+  const cambiar = (p: Pista) => cambiarCompleta(debajo ? conCapaSuelo(completa, p) : p);
+  /** Cambia la pista entera, guardando la de antes para deshacer. */
+  const editarCompleta = (p: Pista) => {
+    if (p === completa) return;
+    recordar(completa);
+    cambiarCompleta(p);
+    eventos.alCambiar(completa);
+  };
+
+  botonDebajo.addEventListener('click', () => {
+    debajo = !debajo;
+    botonDebajo.setAttribute('aria-pressed', String(debajo));
+    elegir(null);
+    cambiarCompleta(completa);
+    usarModo(modo, herramienta);
+  });
 
   const elegir = (s: Seleccion | null) => {
     sel = s;
@@ -264,9 +319,9 @@ export function crearEditorPista(raiz: Document, eventos: { alCambiar(p: Pista):
 
   const editar = (p: Pista) => {
     if (p === pista) return;
-    recordar(pista);
+    recordar(completa);
     cambiar(p);
-    eventos.alCambiar(p);
+    eventos.alCambiar(completa);
   };
 
   const seleccionValida = (s: Seleccion | null) =>
@@ -351,37 +406,52 @@ export function crearEditorPista(raiz: Document, eventos: { alCambiar(p: Pista):
     const k = celdaDe(punto.x, punto.y);
     return baldosaEn(p, k.c, k.r) ? vaciarCelda(p, k.c, k.r) : p;
   };
-  canvas.addEventListener('contextmenu', e => e.preventDefault());
-  canvas.addEventListener('pointerdown', e => {
-    if (vista.escala === 0) return;
-    const punto = puntoDelEvento(e);
+  /**
+   * Botón apretado en un punto de la pista. En 2D, un clic con Elegir elige al tiro; en 3D, solo si
+   * toma un objeto o el inicio (si no, el arrastre gira la cámara y el clic elige al soltar).
+   */
+  const presionar = (punto: Punto, boton: number, px: Punto, desde3D: boolean): boolean => {
     const celda = celdaDe(punto.x, punto.y);
     // Lápiz y goma (y el clic derecho, que siempre borra): un trazo que se confirma al soltar.
-    if (e.button === 2 || (e.button === 0 && (modo === 'lapiz' || modo === 'goma'))) {
+    if (boton === 2 || (boton === 0 && (modo === 'lapiz' || modo === 'goma'))) {
       confirmarCampo();
       conTeclado = false;
-      const borrar = e.button === 2 || modo === 'goma';
-      trazo = { base: pista, camino: [celda], borrar };
+      const borrar = boton === 2 || modo === 'goma';
+      trazo = { base: pista, baseCompleta: completa, camino: [celda], borrar };
       if (borrar) {
         cambiar(borrarEn(pista, punto));
         if (sel && !seleccionValida(sel)) elegir(null);
       }
-      canvas.setPointerCapture(e.pointerId);
-      return;
+      return true;
     }
-    if (e.button !== 0) return;
+    if (boton !== 0) return false;
+    const tomado = herramienta ? null : loQueHayEn(pista, punto.x, punto.y);
+    if (desde3D && !herramienta && !tomado) return false;
     confirmarCampo();
     conTeclado = false;
-    const tomado = herramienta ? null : loQueHayEn(pista, punto.x, punto.y);
     aplicar(punto);
-    if (!tomado) return;
+    if (!tomado) return true;
     const origen = tomado.clase === 'inicio' ? pista.inicio : pista.objetos[(tomado as { indice: number }).indice];
-    arrastre = { que: tomado, base: pista, desfase: { x: origen.x - punto.x, y: origen.y - punto.y }, inicioPx: { x: e.clientX, y: e.clientY }, movido: false };
-    canvas.setPointerCapture(e.pointerId);
+    arrastre = { que: tomado, base: pista, baseCompleta: completa, desfase: { x: origen.x - punto.x, y: origen.y - punto.y }, inicioPx: px, movido: false };
+    return true;
+  };
+  canvas.addEventListener('contextmenu', e => e.preventDefault());
+  canvas.addEventListener('pointerdown', e => {
+    if (vista.escala === 0) return;
+    if (presionar(puntoDelEvento(e), e.button, { x: e.clientX, y: e.clientY }, false)) canvas.setPointerCapture(e.pointerId);
   });
   canvas.addEventListener('pointermove', e => {
     if (vista.escala === 0) return;
-    const punto = puntoDelEvento(e);
+    moverPuntero(puntoDelEvento(e), { x: e.clientX, y: e.clientY });
+  });
+  const moverPuntero = (punto: Punto | null, px: Punto) => {
+    if (!punto) {
+      if (cursor) {
+        cursor = null;
+        pedirDibujo();
+      }
+      return;
+    }
     if (trazo) {
       const celda = celdaDe(punto.x, punto.y);
       const ultima = trazo.camino.at(-1)!;
@@ -396,7 +466,7 @@ export function crearEditorPista(raiz: Document, eventos: { alCambiar(p: Pista):
       return;
     }
     if (arrastre) {
-      arrastre.movido ||= Math.hypot(e.clientX - arrastre.inicioPx.x, e.clientY - arrastre.inicioPx.y) >= UMBRAL_ARRASTRE_PX;
+      arrastre.movido ||= Math.hypot(px.x - arrastre.inicioPx.x, px.y - arrastre.inicioPx.y) >= UMBRAL_ARRASTRE_PX;
       if (!arrastre.movido) return;
       const x = punto.x + arrastre.desfase.x;
       const y = punto.y + arrastre.desfase.y;
@@ -408,32 +478,35 @@ export function crearEditorPista(raiz: Document, eventos: { alCambiar(p: Pista):
     if (cursor?.c === celda.c && cursor.r === celda.r) return;
     cursor = celda;
     pedirDibujo();
-  });
+  };
   const soltar = () => {
     if (trazo) {
-      const { base } = trazo;
+      const { baseCompleta } = trazo;
       trazo = null;
-      if (pista !== base) {
-        recordar(base);
-        eventos.alCambiar(pista);
+      if (completa !== baseCompleta) {
+        recordar(baseCompleta);
+        eventos.alCambiar(completa);
       }
       return;
     }
     if (!arrastre) return;
-    const { movido, base } = arrastre;
+    const { movido, baseCompleta } = arrastre;
     arrastre = null;
     if (movido) {
-      recordar(base);
-      eventos.alCambiar(pista);
+      recordar(baseCompleta);
+      eventos.alCambiar(completa);
     }
   };
   // Doble clic con Elegir: gira la baldosa.
-  canvas.addEventListener('dblclick', e => {
-    if (modo !== 'elegir' || vista.escala === 0) return;
-    const punto = puntoDelEvento(e);
+  const dobleClic = (punto: Punto) => {
+    if (modo !== 'elegir') return;
     if (loQueHayEn(pista, punto.x, punto.y)) return;
     const k = celdaDe(punto.x, punto.y);
     if (baldosaEn(pista, k.c, k.r)) editar(girarBaldosa(pista, k.c, k.r, 1));
+  };
+  canvas.addEventListener('dblclick', e => {
+    if (vista.escala === 0) return;
+    dobleClic(puntoDelEvento(e));
   });
   canvas.addEventListener('pointerup', soltar);
   canvas.addEventListener('pointercancel', soltar);
@@ -495,17 +568,17 @@ export function crearEditorPista(raiz: Document, eventos: { alCambiar(p: Pista):
       cambiar(pista);
       return;
     }
-    const antes = pista;
+    const antes = completa;
     const { pista: nueva, quitados } = redimensionar(antes, columnas, filas);
     if (quitados > 0) {
       const piezas = quitados === 1 ? '1 pieza que queda' : `${quitados} piezas que quedan`;
       const seguir = await confirmar(raiz, { titulo: `Al achicar la pista se quitan ${piezas} fuera. ¿Seguir?`, boton: 'Seguir' });
-      if (!seguir || pista !== antes) {
+      if (!seguir || completa !== antes) {
         cambiar(pista);
         return;
       }
     }
-    editar(nueva);
+    editarCompleta(nueva);
     // Quitar objetos cambia sus índices: lo elegido se suelta.
     if (!seleccionValida(sel) || (quitados > 0 && sel?.clase === 'objeto')) elegir(null);
   };
@@ -529,8 +602,8 @@ export function crearEditorPista(raiz: Document, eventos: { alCambiar(p: Pista):
   return {
     mostrar(p) {
       // Abrir otra pista también se puede deshacer (salvo la primera vez, con la pista vacía).
-      if (pista.baldosas.length > 0 || pista.objetos.length > 0) recordar(pista);
-      cambiar(p);
+      if (completa.baldosas.length > 0 || completa.objetos.length > 0) recordar(completa);
+      cambiarCompleta(p);
       ajustarVista();
       foco = { c: 0, r: 0 };
       elegir(null);
@@ -540,6 +613,18 @@ export function crearEditorPista(raiz: Document, eventos: { alCambiar(p: Pista):
       if (!seleccionValida(sel)) elegir(null);
     },
     pista: () => pista,
+    pistaCompleta: () => completa,
+    verDebajo: () => debajo,
+    puntero: {
+      presionar: (p, boton, px) => presionar(p, boton, px, true),
+      mover: moverPuntero,
+      soltar,
+      clic(p) {
+        if (modo === 'elegir') aplicar(p);
+      },
+      dobleClic,
+      herramientaActiva: () => modo !== 'elegir',
+    },
     seleccion: () => sel,
     elegir,
     herramienta: () => herramienta,

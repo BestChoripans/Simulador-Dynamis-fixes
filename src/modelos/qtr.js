@@ -12,7 +12,7 @@ export function leerQTR({ sensores, mundo }) {
   // TODO(profe): reemplazar este placeholder ideal (reflectancia directa del color del suelo, sin
   // emisores, luz ambiente, altura ni ruido) por el modelo real del sensor.
   return sensores.map(s => {
-    const { r, g, b } = mundo.muestrear(s.x, s.y);
+    const { r, g, b } = mundo.muestrear(s.x, s.y, s.z);
     const luminancia = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
     return Math.round(180 + (1 - luminancia) * 3800);
   });

@@ -1,5 +1,5 @@
 import { distanciaAPoligono, rectanguloGirado } from '../mundo/geometria';
-import { alturaBaldosa } from '../mundo/relieve';
+import { alturaBaldosa, crearCapas, esElevada } from './capas';
 import { aLocal, aMundo, celdaDe, crearIndice, ladoEnMundo } from './baldosas';
 import { accionEsperada, bocasDe } from './catalogo';
 import { gradosARadianes } from './serializacion';
@@ -27,6 +27,7 @@ const VECINO: Record<Lado, [number, number]> = { este: [1, 0], oeste: [-1, 0], n
 
 function revisarEscalones(p: Pista, avisos: AvisoPista[]): void {
   const indice = crearIndice(p);
+  const capas = crearCapas(p);
   const vistos = new Set<string>();
   const alturaEn = (b: Baldosa | null, x: number, y: number) => {
     if (!b) return 0;
@@ -44,6 +45,8 @@ function revisarEscalones(p: Pista, avisos: AvisoPista[]): void {
       const clave = [`${b.c},${b.r}`, `${c},${r}`].sort().join('|');
       if (vistos.has(clave)) continue;
       vistos.add(clave);
+      // Una línea del suelo que sigue por debajo de un puente no sube a él: no es un escalón.
+      if (!esElevada(b) && esElevada(indice(c, r)) && capas.debajo(c, r)) continue;
       const x = (b.c + 0.5 + dc / 2) * TAMANO_BALDOSA;
       const y = (b.r + 0.5 + dr / 2) * TAMANO_BALDOSA;
       const salto = Math.abs(alturaEn(b, x, y) - alturaEn(indice(c, r), x, y));

@@ -159,13 +159,16 @@ export async function iniciarAplicacion(raiz: Document): Promise<void> {
   const editorPista = crearEditorPista(raiz, {
     alCambiar: p => {
       alEditarPista(p);
-      panelPista.mostrar(p, editorPista.seleccion());
+      panelPista.mostrar(editorPista.pista(), editorPista.seleccion());
     },
     alElegir: s => panelPista.mostrar(editorPista.pista(), s),
+    // El 3D del editor se pone al día también durante un trazo.
+    alVer: (p, debajo) => vistaEditor.mostrarPista(p, debajo),
+  });
+  const vistaEditor = crearVistaDoble(raiz, {
+    nombre: 'vista-editor', caja: $('caja-editor'), lienzo2D: $('lienzo-editor'), robot: robotEditado, edicion: editorPista.puntero,
   });
   editorPista.mostrar(pista);
-  const vistaEditor = crearVistaDoble(raiz, { nombre: 'vista-editor', caja: $('caja-editor'), lienzo2D: $('lienzo-editor'), robot: robotEditado });
-  vistaEditor.mostrarPista(pista);
   vistaEditor.reiniciar(poseInicial(pista));
   const archivoPista = crearArchivoPista(raiz, {
     pista: () => pistaEditada,
@@ -182,7 +185,7 @@ export async function iniciarAplicacion(raiz: Document): Promise<void> {
   $('btn-ejemplos').addEventListener('click', () => ventanaEjemplos.abrir());
   /** La pista editada se guarda y, si no corre una prueba, se ve al tiro en Programar. */
   function alEditarPista(p: Pista) {
-    vistaEditor.mostrarPista(p);
+    vistaEditor.mostrarPista(p, editorPista.verDebajo());
     vistaEditor.reiniciar(poseInicial(p));
     pistaEditada = p;
     guardarPista(p);
@@ -473,4 +476,5 @@ export async function iniciarAplicacion(raiz: Document): Promise<void> {
   registrarPrueba('robot', () => (ultima ? { x: ultima.estado.x, y: ultima.estado.y } : null));
   registrarPrueba('trabajadoresVivos', () => vivos);
   registrarPrueba('abrirProyecto', (p: Proyecto) => programa.abrir(p));
+  registrarPrueba('abrirPista', (p: Pista) => { editorPista.mostrar(p); alEditarPista(p); });
 }

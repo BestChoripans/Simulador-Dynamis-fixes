@@ -1,5 +1,5 @@
 import { aLocal, celdaDe, ladoEnMundo } from './baldosas';
-import { alturaBaldosa } from '../mundo/relieve';
+import { alturaBaldosa, ordenarCapas } from './capas';
 import { gradosARadianes, normalizarPista } from './serializacion';
 import { TAMANO_BALDOSA, type Baldosa, type Lado, type ObjetoDePista, type Pista, type Rotacion, type TipoBaldosa } from './tipos';
 
@@ -84,7 +84,7 @@ function conRampasContinuas(baldosas: Baldosa[], desde: Baldosa): Baldosa[] {
 
 function conBaldosa(p: Pista, b: Baldosa): Pista {
   const resto = p.baldosas.filter(o => !enCelda(b.c, b.r)(o));
-  return { ...p, baldosas: conRampasContinuas([...resto, b], b) };
+  return ordenarCapas({ ...p, baldosas: conRampasContinuas([...resto, b], b) });
 }
 
 /** La rampa que sube hacia la celda de `b`, si hay una. */
@@ -139,7 +139,7 @@ export function girarBaldosa(p: Pista, c: number, r: number, sentido: 1 | -1): P
 }
 
 export function vaciarCelda(p: Pista, c: number, r: number): Pista {
-  return { ...p, baldosas: p.baldosas.filter(b => !enCelda(c, r)(b)) };
+  return ordenarCapas({ ...p, baldosas: p.baldosas.filter(b => !enCelda(c, r)(b)) });
 }
 
 export function cambiarBaldosa(p: Pista, c: number, r: number, cambios: { nivel?: number; props?: Record<string, unknown> }): Pista {
@@ -250,6 +250,8 @@ export function redimensionar(p: Pista, columnas: number, filas: number): { pist
   const { x, y, yaw } = p.inicio;
   const dentro = x >= 0 && y >= 0 && x < ancho && y < alto;
   const inicio = dentro ? p.inicio : { x: acotar(x, MEDIO, ancho - MEDIO), y: acotar(y, MEDIO, alto - MEDIO), yaw };
-  const quitados = p.baldosas.length - baldosas.length + p.objetos.length - objetos.length;
-  return { pista: { ...p, columnas: cols, filas: fils, baldosas, objetos, inicio }, quitados };
+  const debajo = p.debajo?.filter(b => b.c < cols && b.r < fils);
+  const quitados = p.baldosas.length - baldosas.length + (p.debajo?.length ?? 0) - (debajo?.length ?? 0) + p.objetos.length - objetos.length;
+  const { debajo: _, ...resto } = p;
+  return { pista: { ...resto, columnas: cols, filas: fils, baldosas, ...(debajo?.length ? { debajo } : {}), objetos, inicio }, quitados };
 }

@@ -179,6 +179,10 @@ export interface MarcasEditor {
   anillo: { x: number; y: number; radio: number } | null;
   /** La celda con el foco del teclado (borde punteado). */
   foco: { c: number; r: number } | null;
+  /** Con «Ver debajo de los puentes»: los puentes, rayados encima del suelo. */
+  puentes?: { c: number; r: number }[];
+  /** Puentes con una línea debajo (borde morado a trazos). */
+  conDebajo?: { c: number; r: number }[];
 }
 
 /** Las marcas del editor sobre la pista ya dibujada con la misma vista. */
@@ -193,6 +197,24 @@ export function dibujarMarcasEditor(ctx: CanvasRenderingContext2D, v: Vista, m: 
     ctx.strokeRect(c * T + dentro, r * T + dentro, T - 2 * dentro, T - 2 * dentro);
     ctx.setLineDash([]);
   };
+  for (const { c, r } of m.puentes ?? []) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(c * T, r * T, T, T);
+    ctx.clip();
+    ctx.fillStyle = 'rgba(123,79,208,0.12)';
+    ctx.fillRect(c * T, r * T, T, T);
+    ctx.strokeStyle = 'rgba(123,79,208,0.45)';
+    ctx.lineWidth = px(2);
+    for (let d = -T; d < T; d += 30) {
+      ctx.beginPath();
+      ctx.moveTo(c * T + d, r * T);
+      ctx.lineTo(c * T + d + T, (r + 1) * T);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+  for (const { c, r } of m.conDebajo ?? []) borde(c, r, '#7B4FD0', 2.5, [8, 6]);
   if (m.fantasma) {
     ctx.save();
     ctx.globalAlpha = 0.55;

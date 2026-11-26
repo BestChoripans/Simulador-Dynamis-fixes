@@ -24,6 +24,11 @@ subirlo al robot físico.
   del sensor de línea, el color de los TCS34725 y el rayo del láser. Cámaras: libre (arrastrar para
   girar, rueda para acercar, clic derecho para mover), seguir al robot, desde el robot y desde arriba.
   Three.js se descarga recién la primera vez que se abre el 3D.
+  En el 3D de Construir pista también se edita: con una herramienta, el clic edita y el clic derecho
+  gira la cámara.
+- **Puentes:** las rampas y plataformas son tablas sobre patas, y por debajo puede pasar otra línea
+  («Ver debajo de los puentes» en el editor; en el JSON, la lista `debajo`). El robot sigue por el
+  suelo si cabe bajo la tabla, y choca con ella si no.
 - **Física realista:** el robot tiene masa e inercia, motores con su curva torque–velocidad (y
   freno en corto), fricción con el suelo (las ruedas patinan si se les pide demasiado), gravedad en
   las rampas y choques. Acelera y frena en un tiempo, sube más lento las rampas y cada motor sale un

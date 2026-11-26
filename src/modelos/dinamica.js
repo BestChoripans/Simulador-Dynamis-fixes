@@ -29,10 +29,11 @@ export function estadoInicial(pose, robot, mundo) {
  * cola del chasis. Así el robot empieza a subir cuando su apoyo delantero llega a la rampa, y un
  * bache chico lo inclina poco.
  */
-function apoyo(x, y, yaw, robot, mundo) {
+function apoyo(x, y, yaw, robot, mundo, zAnterior) {
   const c = Math.cos(yaw);
   const s = Math.sin(yaw);
-  const suelo = (adelante, izquierda) => mundo.altura(x + adelante * c - izquierda * s, y + adelante * s + izquierda * c);
+  // Con la altura de antes: debajo de un puente, el robot sigue en el suelo (no sube a la tabla).
+  const suelo = (adelante, izquierda) => mundo.altura(x + adelante * c - izquierda * s, y + adelante * s + izquierda * c, zAnterior);
   const locas = robot.ruedasLocas;
   const conLocas = locas?.instalado && locas.x !== robot.ruedas.x;
   const delante = conLocas ? locas.x : robot.chasis.xDelantero;
@@ -168,19 +169,19 @@ export function pasoDinamica(estado, motores, dt, mundo, robot, azar) {
   let y = estado.y + (v * s + vLat * c) * 1000 * dt;
   let nuevoYaw = yaw;
   let choque = false;
-  if (mundo.colisiona(huellaRobot(x, y, yaw, robot))) {
+  if (mundo.colisiona(huellaRobot(x, y, yaw, robot), estado.z, robot.chasis.alto)) {
     // Contra un obstáculo: se queda donde estaba y pierde la velocidad; las ruedas siguen girando.
     choque = true;
     x = estado.x;
     y = estado.y;
-    nuevoYaw = mundo.colisiona(huellaRobot(x, y, yaw, robot)) ? estado.yaw : yaw;
+    nuevoYaw = mundo.colisiona(huellaRobot(x, y, yaw, robot), estado.z, robot.chasis.alto) ? estado.yaw : yaw;
     v = 0;
     vLat = 0;
     w = nuevoYaw === estado.yaw ? 0 : w;
   }
 
   return {
-    ...estado, x, y, yaw: nuevoYaw, ...apoyo(x, y, nuevoYaw, robot, mundo),
+    ...estado, x, y, yaw: nuevoYaw, ...apoyo(x, y, nuevoYaw, robot, mundo, estado.z),
     v: v * 1000, vLat: vLat * 1000, w,
     ruedaIzq: ruedaIzq * 1000, ruedaDer: ruedaDer * 1000,
     patinaIzq: tIzq.patina, patinaDer: tDer.patina, choque,

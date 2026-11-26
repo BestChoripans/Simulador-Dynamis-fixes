@@ -50,6 +50,11 @@ export interface Pista {
   /** Color de las marcas de toda la pista; cada cruce puede tener el suyo. */
   colorMarcas?: string;
   baldosas: Baldosa[];
+  /**
+   * Baldosas en el suelo debajo de los puentes (rampas y baldosas elevadas de `baldosas`): una línea
+   * que pasa por abajo. Siempre con nivel 0; solo en celdas con un puente arriba.
+   */
+  debajo?: Baldosa[];
   objetos: ObjetoDePista[];
   inicio: { x: number; y: number; yaw: number };
 }

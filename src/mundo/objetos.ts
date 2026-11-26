@@ -102,7 +102,7 @@ export function crearObjetos(p: Pista, relieve: Relieve): Objetos {
    * máxima; fuera de la grilla el suelo es plano a altura 0 y se resuelve sin marchar. Así termina con max = Infinity.
    */
   const rayoContraSuelo = (o: Punto3, d: Punto3, max: number): { distancia: number; normal: Punto3 } | null => {
-    const debajo = (s: number) => o.z + s * d.z <= relieve.altura(o.x + s * d.x, o.y + s * d.y);
+    const debajo = (s: number) => relieve.solido(o.x + s * d.x, o.y + s * d.y, o.z + s * d.z);
     if (debajo(0)) return { distancia: 0, normal: normalSuelo(o.x, o.y) };
     const plano = (desde: number, hasta: number) => {
       if (d.z >= 0) return null;
@@ -140,9 +140,11 @@ export function crearObjetos(p: Pista, relieve: Relieve): Objetos {
   };
 
   return {
-    colisiona(poligono): Colision | null {
+    colisiona(poligono, z, alto): Colision | null {
       let mejor: Colision | null = null;
       for (const k of cajas) {
+        // Con la altura del robot: un objeto de otro piso (sobre un puente o debajo) no lo toca.
+        if (z !== undefined && alto !== undefined && (k.tope <= z + 5 || k.base >= z + alto)) continue;
         const traslape = penetracion(poligono, k.huella);
         if (traslape !== null && (mejor === null || traslape > mejor.penetracion)) mejor = { objeto: k.objeto, penetracion: traslape };
       }

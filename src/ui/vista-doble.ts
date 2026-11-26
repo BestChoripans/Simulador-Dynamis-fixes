@@ -1,4 +1,5 @@
 import type { Camara3D, Vista3D } from './vista3d';
+import type { PunteroPista } from './editor-pista';
 import type { Instantanea } from '../simulacion/ejecucion';
 import type { Pose } from '../simulacion/simulador';
 import type { Pista } from '../pista/tipos';
@@ -10,7 +11,8 @@ import type { ConfigRobot } from '../robot/config';
  * La elección se recuerda en este navegador.
  */
 export interface VistaDoble {
-  mostrarPista(p: Pista): void;
+  /** debajo: se edita el suelo bajo los puentes. */
+  mostrarPista(p: Pista, debajo?: boolean): void;
   cambiarRobot(r: ConfigRobot): void;
   mostrarInstantanea(i: Instantanea): void;
   reiniciar(pose: Pose): void;
@@ -23,6 +25,8 @@ export function crearVistaDoble(raiz: Document, o: {
   caja: HTMLElement;
   lienzo2D: HTMLElement;
   robot: ConfigRobot;
+  /** Para editar la pista desde el 3D con el puntero. */
+  edicion?: PunteroPista;
   /** Al cambiar entre 2D y 3D (por ejemplo, para ocultar lo que solo sirve en 2D). */
   alCambiar?(es3D: boolean): void;
 }): VistaDoble {
@@ -39,6 +43,7 @@ export function crearVistaDoble(raiz: Document, o: {
   let activo = false;
   // Lo último que se mostró, para ponerlo al día al crear el 3D.
   let pista: Pista | null = null;
+  let debajo = false;
   let robot = o.robot;
   let ultima: Instantanea | null = null;
   let pose: Pose | null = null;
@@ -48,8 +53,8 @@ export function crearVistaDoble(raiz: Document, o: {
   };
   const cargar = () => {
     cargandoVista ??= import('./vista3d').then(({ crearVista3D }) => {
-      const v = crearVista3D(caja3D, robot);
-      if (pista) v.mostrarPista(pista);
+      const v = crearVista3D(caja3D, robot, o.edicion);
+      if (pista) v.mostrarPista(pista, debajo);
       if (pose) v.reiniciar(pose);
       if (ultima) v.mostrarInstantanea(ultima);
       caja3D.addEventListener('camara3d', e => marcarCamara((e as CustomEvent<Camara3D>).detail));
@@ -93,9 +98,10 @@ export function crearVistaDoble(raiz: Document, o: {
   if (guardado === '3d') void usar(true);
 
   return {
-    mostrarPista(p) {
+    mostrarPista(p, d = false) {
       pista = p;
-      vista?.mostrarPista(p);
+      debajo = d;
+      vista?.mostrarPista(p, d);
     },
     cambiarRobot(r) {
       robot = r;

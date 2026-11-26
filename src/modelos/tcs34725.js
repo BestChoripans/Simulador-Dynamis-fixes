@@ -13,7 +13,7 @@ const CUENTAS_POR_MS = 10;
 export function leerTCS34725({ sensor, tiempoIntegracionMs, ganancia, mundo }) {
   // TODO(profe): reemplazar este placeholder ideal (el color del suelo escalado, sin LED, luz
   // ambiente, altura ni ruido) por el modelo real del sensor.
-  const color = mundo.muestrear(sensor.x, sensor.y);
+  const color = mundo.muestrear(sensor.x, sensor.y, sensor.z);
   const cuentas = valor => Math.round((valor / 255) * CUENTAS_POR_MS * ganancia * tiempoIntegracionMs);
   const r = cuentas(color.r);
   const g = cuentas(color.g);
